@@ -2,8 +2,6 @@
 package config
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"os"
 	"strings"
 	"time"
@@ -14,7 +12,6 @@ import (
 
 // Config holds the configuration for relayd.
 type Config struct {
-	InstanceID   string
 	Force        bool
 	SyncInterval time.Duration
 	Providers    []Provider
@@ -31,7 +28,6 @@ type Provider struct {
 // New creates a new Config from a CLI command.
 func New(cmd *cli.Command) Config {
 	cfg := Config{
-		InstanceID:   generateInstanceID(),
 		Force:        cmd.Bool("force"),
 		SyncInterval: cmd.Duration("sync-interval"),
 	}
@@ -48,18 +44,4 @@ func New(cmd *cli.Command) Config {
 	}
 
 	return cfg
-}
-
-func generateInstanceID() string {
-	for _, path := range []string{"/etc/machine-id", "/var/lib/dbus/machine-id"} {
-		if b, err := os.ReadFile(path); err == nil && len(b) > 0 {
-			return strings.TrimSpace(string(b))
-		}
-	}
-	h, _ := os.Hostname()
-	if h == "" {
-		h = "relayd"
-	}
-	hash := sha256.Sum256([]byte(h))
-	return hex.EncodeToString(hash[:])[:12]
 }

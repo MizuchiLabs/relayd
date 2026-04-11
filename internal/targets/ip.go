@@ -86,7 +86,12 @@ func ResolvePublicIP(ctx context.Context) (IPs, error) {
 
 	if ips.IPv6 == "" {
 		g.Go(func() error {
-			req, _ := http.NewRequestWithContext(gCtx, http.MethodGet, "https://api6.ipify.org", nil)
+			req, _ := http.NewRequestWithContext(
+				gCtx,
+				http.MethodGet,
+				"https://api6.ipify.org",
+				nil,
+			)
 			resp, err := client.Do(req)
 			if err != nil {
 				return nil

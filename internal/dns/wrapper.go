@@ -11,9 +11,17 @@ import (
 // libDNSClient defines the interface expected from a libdns provider.
 type libDNSClient interface {
 	GetRecords(ctx context.Context, zone string) ([]libdns.Record, error)
-	AppendRecords(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error)
+	AppendRecords(
+		ctx context.Context,
+		zone string,
+		records []libdns.Record,
+	) ([]libdns.Record, error)
 	SetRecords(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error)
-	DeleteRecords(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error)
+	DeleteRecords(
+		ctx context.Context,
+		zone string,
+		records []libdns.Record,
+	) ([]libdns.Record, error)
 }
 
 // wrapper provides a uniform interface to a libDNSClient.

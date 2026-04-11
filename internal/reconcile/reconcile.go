@@ -16,14 +16,21 @@ import (
 const txtPrefix = "_relayd"
 
 // Apply synchronizes desired DNS records and TXT ownership records with the provider.
-func Apply(ctx context.Context, provider dns.Provider, zone string, cfg config.Config, hosts []string, target targets.IPs) error {
+func Apply(
+	ctx context.Context,
+	provider dns.Provider,
+	zone string,
+	cfg config.Config,
+	hosts []string,
+	target targets.IPs,
+) error {
 	records, err := provider.Records(ctx, zone)
 	if err != nil {
 		return err
 	}
 
 	desired := desiredSet(hosts, zone)
-	managed := managedSet(records, zone, cfg.InstanceID)
+	managed := managedSet(records, zone)
 
 	var changes dns.ChangeSet
 	ttl := 300 * time.Second
@@ -32,13 +39,29 @@ func Apply(ctx context.Context, provider dns.Provider, zone string, cfg config.C
 		rel := libdns.RelativeName(fqdn, util.WithDot(zone))
 
 		if target.IPv4 != "" {
-			changes.Update = append(changes.Update, dns.Record{Type: "A", Name: rel, Value: target.IPv4, TTL: ttl})
+			changes.Update = append(
+				changes.Update,
+				dns.Record{Type: "A", Name: rel, Value: target.IPv4, TTL: ttl},
+			)
 		}
 		if target.IPv6 != "" {
-			changes.Update = append(changes.Update, dns.Record{Type: "AAAA", Name: rel, Value: target.IPv6, TTL: ttl})
+			changes.Update = append(
+				changes.Update,
+				dns.Record{Type: "AAAA", Name: rel, Value: target.IPv6, TTL: ttl},
+			)
 		}
 
-		changes.Update = append(changes.Update, dns.Record{Type: "TXT", Name: txtName(rel), Value: "relayd=" + cfg.InstanceID, TTL: ttl})
+		if !cfg.Force {
+			changes.Update = append(
+				changes.Update,
+				dns.Record{
+					Type:  "TXT",
+					Name:  txtName(rel),
+					Value: "relayd",
+					TTL:   ttl,
+				},
+			)
+		}
 	}
 
 	if !cfg.Force {
@@ -80,13 +103,12 @@ func desiredSet(hosts []string, zone string) map[string]struct{} {
 	return out
 }
 
-func managedSet(records []dns.Record, zone, instanceID string) map[string]struct{} {
+func managedSet(records []dns.Record, zone string) map[string]struct{} {
 	out := make(map[string]struct{})
 	zDot := util.WithDot(zone)
-	val := "relayd=" + instanceID
 
 	for _, r := range records {
-		if r.Type == "TXT" && r.Value == val {
+		if r.Type == "TXT" && r.Value == "relayd" {
 			name := strings.Trim(r.Name, ".")
 			if name == txtPrefix {
 				out[strings.TrimSuffix(zDot, ".")] = struct{}{}
