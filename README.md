@@ -1,4 +1,12 @@
-# relayd
+<p align="center">
+<img src="./.github/logo.svg" width="80">
+<br><br>
+<img alt="GitHub Tag" src="https://img.shields.io/github/v/tag/MizuchiLabs/relayd?label=Version">
+<img alt="GitHub License" src="https://img.shields.io/github/license/MizuchiLabs/relayd">
+<img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/MizuchiLabs/relayd">
+</p>
+
+# Relayd
 
 `relayd` is a lightweight, zero-configuration "set and forget" external DNS synchronization agent for Docker. It seamlessly updates DNS records (A, AAAA, and TXT ownership records) across various providers based on Docker container labels.
 
@@ -96,3 +104,7 @@ RELAYD_PROVIDER_TECH_KEY_NAME=tsig-key
 RELAYD_PROVIDER_TECH_KEY=base64-encoded-key
 RELAYD_PROVIDER_TECH_ZONES=home.local
 ```
+
+## License
+
+Apache 2.0 License - see [LICENSE](LICENSE) for details
