@@ -11,35 +11,36 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mizuchilabs/relayd/internal/util"
 	"golang.org/x/sync/errgroup"
 )
 
 type IPs struct {
-	IPv4 string
-	IPv6 string
+	IPv4 []string
+	IPv6 []string
 }
 
 func (i IPs) HasAny() bool {
-	return i.IPv4 != "" || i.IPv6 != ""
+	return len(i.IPv4) > 0 || len(i.IPv6) > 0
 }
 
 func ResolveLocalIP() (IPs, error) {
 	var ips IPs
 
-	if ip := os.Getenv("RELAYD_TARGET_LOCAL_OVERRIDE_IPV4"); ip != "" {
-		ips.IPv4 = ip
+	if override := os.Getenv("RELAYD_TARGET_LOCAL_OVERRIDE_IPV4"); override != "" {
+		ips.IPv4 = util.SplitCSV(override)
 	} else if conn, err := net.Dial("udp4", "8.8.8.8:80"); err == nil {
 		if addr, ok := conn.LocalAddr().(*net.UDPAddr); ok {
-			ips.IPv4 = addr.IP.String()
+			ips.IPv4 = []string{addr.IP.String()}
 		}
 		_ = conn.Close()
 	}
 
-	if ip := os.Getenv("RELAYD_TARGET_LOCAL_OVERRIDE_IPV6"); ip != "" {
-		ips.IPv6 = ip
+	if override := os.Getenv("RELAYD_TARGET_LOCAL_OVERRIDE_IPV6"); override != "" {
+		ips.IPv6 = util.SplitCSV(override)
 	} else if conn, err := net.Dial("udp6", "[2001:4860:4860::8888]:80"); err == nil {
 		if addr, ok := conn.LocalAddr().(*net.UDPAddr); ok {
-			ips.IPv6 = addr.IP.String()
+			ips.IPv6 = []string{addr.IP.String()}
 		}
 		_ = conn.Close()
 	}
@@ -53,21 +54,21 @@ func ResolveLocalIP() (IPs, error) {
 func ResolvePublicIP(ctx context.Context) (IPs, error) {
 	var ips IPs
 
-	if ip := os.Getenv("RELAYD_TARGET_PUBLIC_OVERRIDE_IPV4"); ip != "" {
-		ips.IPv4 = ip
+	if override := os.Getenv("RELAYD_TARGET_PUBLIC_OVERRIDE_IPV4"); override != "" {
+		ips.IPv4 = util.SplitCSV(override)
 	}
-	if ip := os.Getenv("RELAYD_TARGET_PUBLIC_OVERRIDE_IPV6"); ip != "" {
-		ips.IPv6 = ip
+	if override := os.Getenv("RELAYD_TARGET_PUBLIC_OVERRIDE_IPV6"); override != "" {
+		ips.IPv6 = util.SplitCSV(override)
 	}
 
-	if ips.IPv4 != "" && ips.IPv6 != "" {
+	if len(ips.IPv4) > 0 && len(ips.IPv6) > 0 {
 		return ips, nil
 	}
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	g, gCtx := errgroup.WithContext(ctx)
 
-	if ips.IPv4 == "" {
+	if len(ips.IPv4) == 0 {
 		g.Go(func() error {
 			req, _ := http.NewRequestWithContext(gCtx, http.MethodGet, "https://api.ipify.org", nil)
 			resp, err := client.Do(req)
@@ -78,13 +79,13 @@ func ResolvePublicIP(ctx context.Context) (IPs, error) {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 64))
 			ipStr := strings.TrimSpace(string(body))
 			if net.ParseIP(ipStr) != nil && strings.Contains(ipStr, ".") {
-				ips.IPv4 = ipStr
+				ips.IPv4 = []string{ipStr}
 			}
 			return nil
 		})
 	}
 
-	if ips.IPv6 == "" {
+	if len(ips.IPv6) == 0 {
 		g.Go(func() error {
 			req, _ := http.NewRequestWithContext(
 				gCtx,
@@ -100,7 +101,7 @@ func ResolvePublicIP(ctx context.Context) (IPs, error) {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 64))
 			ipStr := strings.TrimSpace(string(body))
 			if net.ParseIP(ipStr) != nil && strings.Contains(ipStr, ":") {
-				ips.IPv6 = ipStr
+				ips.IPv6 = []string{ipStr}
 			}
 			return nil
 		})

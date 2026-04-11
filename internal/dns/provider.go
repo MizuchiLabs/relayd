@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/libdns/libdns"
 	"github.com/mizuchilabs/relayd/internal/config"
 )
 
 type Record struct {
-	Type  string
-	Name  string
-	Value string
-	TTL   time.Duration
+	Type     string
+	Name     string
+	Value    string
+	TTL      time.Duration
+	Original libdns.Record
 }
 
 type ChangeSet struct {

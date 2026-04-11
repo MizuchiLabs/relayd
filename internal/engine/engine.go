@@ -4,6 +4,7 @@ package engine
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/mizuchilabs/relayd/internal/config"
@@ -98,13 +99,13 @@ func syncAll(
 		"hosts",
 		len(hosts),
 		"local_v4",
-		localIP.IPv4,
+		strings.Join(localIP.IPv4, ","),
 		"local_v6",
-		localIP.IPv6,
+		strings.Join(localIP.IPv6, ","),
 		"public_v4",
-		publicIP.IPv4,
+		strings.Join(publicIP.IPv4, ","),
 		"public_v6",
-		publicIP.IPv6,
+		strings.Join(publicIP.IPv6, ","),
 	)
 
 	for _, p := range providers {

@@ -15,6 +15,12 @@ import (
 
 const txtPrefix = "_relayd"
 
+type recordKey struct {
+	Type  string
+	Name  string
+	Value string
+}
+
 // Apply synchronizes desired DNS records and TXT ownership records with the provider.
 func Apply(
 	ctx context.Context,
@@ -35,56 +41,92 @@ func Apply(
 	var changes dns.ChangeSet
 	ttl := 300 * time.Second
 
+	var desiredRecords []dns.Record
+
 	for fqdn := range desired {
 		rel := libdns.RelativeName(fqdn, util.WithDot(zone))
 
-		if target.IPv4 != "" {
-			changes.Update = append(
-				changes.Update,
-				dns.Record{Type: "A", Name: rel, Value: target.IPv4, TTL: ttl},
-			)
+		for _, ip := range target.IPv4 {
+			desiredRecords = append(desiredRecords, dns.Record{Type: "A", Name: rel, Value: ip, TTL: ttl})
 		}
-		if target.IPv6 != "" {
-			changes.Update = append(
-				changes.Update,
-				dns.Record{Type: "AAAA", Name: rel, Value: target.IPv6, TTL: ttl},
-			)
+		for _, ip := range target.IPv6 {
+			desiredRecords = append(desiredRecords, dns.Record{Type: "AAAA", Name: rel, Value: ip, TTL: ttl})
 		}
 
 		if !cfg.Force {
-			changes.Update = append(
-				changes.Update,
-				dns.Record{
-					Type:  "TXT",
-					Name:  txtName(rel),
-					Value: "relayd",
-					TTL:   ttl,
-				},
-			)
+			desiredRecords = append(desiredRecords, dns.Record{
+				Type:  "TXT",
+				Name:  txtName(rel),
+				Value: "relayd",
+				TTL:   ttl,
+			})
 		}
 	}
 
-	if !cfg.Force {
-		for fqdn := range managed {
-			rel := libdns.RelativeName(fqdn, util.WithDot(zone))
-			if _, ok := desired[fqdn]; !ok {
-				changes.Delete = append(changes.Delete,
-					dns.Record{Type: "A", Name: rel},
-					dns.Record{Type: "AAAA", Name: rel},
-					dns.Record{Type: "TXT", Name: txtName(rel)},
-				)
-			} else {
-				if target.IPv4 == "" {
-					changes.Delete = append(changes.Delete, dns.Record{Type: "A", Name: rel})
-				}
-				if target.IPv6 == "" {
-					changes.Delete = append(changes.Delete, dns.Record{Type: "AAAA", Name: rel})
-				}
+	existingMap := make(map[recordKey]dns.Record)
+	for _, r := range records {
+		key := recordKey{Type: r.Type, Name: r.Name, Value: r.Value}
+		existingMap[key] = r
+	}
+
+	desiredMap := make(map[recordKey]dns.Record)
+	for _, r := range desiredRecords {
+		key := recordKey{Type: r.Type, Name: r.Name, Value: r.Value}
+		desiredMap[key] = r
+	}
+
+	// Calculate Creates
+	for key, r := range desiredMap {
+		if _, exists := existingMap[key]; !exists {
+			changes.Create = append(changes.Create, r)
+		}
+	}
+
+	// Calculate Deletes
+	for _, r := range records {
+		if r.Type != "A" && r.Type != "AAAA" && r.Type != "TXT" {
+			continue
+		}
+
+		// Do not touch other TXT records (e.g., SPF, DKIM)
+		if r.Type == "TXT" && !strings.HasPrefix(r.Name, txtPrefix) {
+			continue
+		}
+
+		key := recordKey{Type: r.Type, Name: r.Name, Value: r.Value}
+		if _, desired := desiredMap[key]; desired {
+			continue
+		}
+
+		// Figure out the host for the current record
+		absName := libdns.AbsoluteName(r.Name, util.WithDot(zone))
+		hostToCheck := strings.TrimSuffix(absName, ".")
+
+		if r.Type == "TXT" && strings.HasPrefix(r.Name, txtPrefix) {
+			if r.Name == txtPrefix {
+				hostToCheck = strings.TrimSuffix(util.WithDot(zone), ".")
+			} else if after, ok := strings.CutPrefix(r.Name, txtPrefix+"."); ok {
+				hostToCheck = strings.TrimSuffix(libdns.AbsoluteName(after, util.WithDot(zone)), ".")
 			}
 		}
+
+		shouldDelete := false
+		if !cfg.Force {
+			if _, isManaged := managed[hostToCheck]; isManaged {
+				shouldDelete = true
+			}
+		} else {
+			if _, isDesired := desired[hostToCheck]; isDesired {
+				shouldDelete = true
+			}
+		}
+
+		if shouldDelete {
+			changes.Delete = append(changes.Delete, r)
+		}
 	}
 
-	if len(changes.Update) == 0 && len(changes.Delete) == 0 && len(changes.Create) == 0 {
+	if len(changes.Create) == 0 && len(changes.Delete) == 0 {
 		return nil
 	}
 

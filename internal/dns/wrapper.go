@@ -78,12 +78,16 @@ func (w *wrapper) Apply(ctx context.Context, zone string, changes ChangeSet) err
 func toLibDNS(records []Record) []libdns.Record {
 	out := make([]libdns.Record, 0, len(records))
 	for _, r := range records {
-		out = append(out, libdns.RR{
-			Type: strings.ToUpper(r.Type),
-			Name: r.Name,
-			Data: r.Value,
-			TTL:  r.TTL,
-		})
+		if r.Original != nil {
+			out = append(out, r.Original)
+		} else {
+			out = append(out, libdns.RR{
+				Type: strings.ToUpper(r.Type),
+				Name: r.Name,
+				Data: r.Value,
+				TTL:  r.TTL,
+			})
+		}
 	}
 	return out
 }
@@ -91,10 +95,11 @@ func toLibDNS(records []Record) []libdns.Record {
 func fromLibDNS(record libdns.Record) Record {
 	rr := record.RR()
 	return Record{
-		Type:  rr.Type,
-		Name:  rr.Name,
-		Value: rr.Data,
-		TTL:   sanitizeTTL(rr.TTL),
+		Type:     rr.Type,
+		Name:     rr.Name,
+		Value:    rr.Data,
+		TTL:      sanitizeTTL(rr.TTL),
+		Original: record,
 	}
 }
 
