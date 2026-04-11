@@ -27,7 +27,7 @@ func (i IPs) HasAny() bool {
 func ResolveLocalIP() (IPs, error) {
 	var ips IPs
 
-	if override := os.Getenv("RELAYD_TARGET_LOCAL_OVERRIDE_IPV4"); override != "" {
+	if override := os.Getenv("RELAYD_LOCAL_OVERRIDE_IPV4"); override != "" {
 		ips.IPv4 = util.SplitCSV(override)
 	} else if conn, err := net.Dial("udp4", "8.8.8.8:80"); err == nil {
 		if addr, ok := conn.LocalAddr().(*net.UDPAddr); ok {
@@ -36,7 +36,7 @@ func ResolveLocalIP() (IPs, error) {
 		_ = conn.Close()
 	}
 
-	if override := os.Getenv("RELAYD_TARGET_LOCAL_OVERRIDE_IPV6"); override != "" {
+	if override := os.Getenv("RELAYD_LOCAL_OVERRIDE_IPV6"); override != "" {
 		ips.IPv6 = util.SplitCSV(override)
 	} else if conn, err := net.Dial("udp6", "[2001:4860:4860::8888]:80"); err == nil {
 		if addr, ok := conn.LocalAddr().(*net.UDPAddr); ok {
@@ -54,10 +54,10 @@ func ResolveLocalIP() (IPs, error) {
 func ResolvePublicIP(ctx context.Context) (IPs, error) {
 	var ips IPs
 
-	if override := os.Getenv("RELAYD_TARGET_PUBLIC_OVERRIDE_IPV4"); override != "" {
+	if override := os.Getenv("RELAYD_PUBLIC_OVERRIDE_IPV4"); override != "" {
 		ips.IPv4 = util.SplitCSV(override)
 	}
-	if override := os.Getenv("RELAYD_TARGET_PUBLIC_OVERRIDE_IPV6"); override != "" {
+	if override := os.Getenv("RELAYD_PUBLIC_OVERRIDE_IPV6"); override != "" {
 		ips.IPv6 = util.SplitCSV(override)
 	}
 

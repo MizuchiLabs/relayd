@@ -55,12 +55,14 @@ Relayd can be configured entirely via environment variables.
 
 ### Global Options
 
-| Variable                             | Default | Description                                                       |
-| :----------------------------------- | :------ | :---------------------------------------------------------------- |
-| `RELAYD_INTERVAL`                    | `5m`    | Background sync interval (e.g. `5m`, `1h`).                       |
-| `RELAYD_FORCE`                       | `false` | Forcefully overwrite existing DNS records ignoring TXT ownership. |
-| `RELAYD_TARGET_LOCAL_OVERRIDE_IPV4`  | _auto_  | Hardcode the local IPv4 address instead of auto-discovering.      |
-| `RELAYD_TARGET_PUBLIC_OVERRIDE_IPV4` | _auto_  | Hardcode the public IPv4 address instead of auto-discovering.     |
+| Variable                      | Default | Description                                                       |
+| :---------------------------- | :------ | :---------------------------------------------------------------- |
+| `RELAYD_INTERVAL`             | `5m`    | Background sync interval (e.g. `5m`, `1h`).                       |
+| `RELAYD_FORCE`                | `false` | Forcefully overwrite existing DNS records ignoring TXT ownership. |
+| `RELAYD_LOCAL_OVERRIDE_IPV4`  | _auto_  | Hardcode the local IPv4 address instead of auto-discovering.      |
+| `RELAYD_LOCAL_OVERRIDE_IPV6`  | _auto_  | Hardcode the local IPv6 address instead of auto-discovering.      |
+| `RELAYD_PUBLIC_OVERRIDE_IPV4` | _auto_  | Hardcode the public IPv4 address instead of auto-discovering.     |
+| `RELAYD_PUBLIC_OVERRIDE_IPV6` | _auto_  | Hardcode the public IPv6 address instead of auto-discovering.     |
 
 ### Configuring Providers
 
