@@ -24,9 +24,9 @@ type Provider struct {
 	Scope string
 	Zones []string
 	Token string
+	URL   string
 }
 
-// New creates a new Config from a CLI command.
 func New(cmd *cli.Command) Config {
 	cfg := Config{
 		Force:    cmd.Bool("force"),
@@ -55,6 +55,7 @@ func New(cmd *cli.Command) Config {
 			Scope: util.GetEnv(pfx+"SCOPE", "public"),
 			Zones: util.SplitCSV(os.Getenv(pfx + "ZONES")),
 			Token: os.Getenv(pfx + "TOKEN"),
+			URL:   os.Getenv(pfx + "URL"),
 		})
 	}
 
