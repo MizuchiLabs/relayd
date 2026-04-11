@@ -21,7 +21,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 		return err
 	}
 
-	slog.Info("Starting relayd", "interval", cfg.SyncInterval)
+	slog.Info("Starting relayd", "interval", cfg.Interval)
 	source, err := discovery.NewDockerSource()
 	if err != nil {
 		slog.Error("Docker source failed", "error", err)
@@ -34,7 +34,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 	}
 
 	events, watchErrs := source.Watch(ctx)
-	ticker := time.NewTicker(cfg.SyncInterval)
+	ticker := time.NewTicker(cfg.Interval)
 	defer ticker.Stop()
 
 	for {

@@ -70,9 +70,9 @@ For manual domain assignments, simply attach the 'relayd.hosts' label to your co
 				Usage:   "Forcefully overwrite existing DNS records ignoring TXT ownership",
 			},
 			&cli.DurationFlag{
-				Name:    "sync-interval",
+				Name:    "interval",
 				Value:   5 * time.Minute,
-				Sources: cli.EnvVars("RELAYD_SYNC_INTERVAL"),
+				Sources: cli.EnvVars("RELAYD_INTERVAL"),
 				Usage:   "Time interval for recurring background DNS synchronization (e.g. 5m, 1h)",
 			},
 		},

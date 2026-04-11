@@ -2,7 +2,6 @@ package dns
 
 import (
 	"os"
-	"strings"
 
 	"github.com/libdns/rfc2136"
 	"github.com/mizuchilabs/relayd/internal/config"
@@ -10,11 +9,10 @@ import (
 
 // NewRFC2136Provider creates a new RFC2136 provider wrapped for relayd.
 func NewRFC2136Provider(cfg config.Provider) Provider {
-	name := strings.ToUpper(strings.ReplaceAll(cfg.Type, "-", "_"))
-	server := os.Getenv("RELAYD_PROVIDER_" + name + "_SERVER")
-	keyName := os.Getenv("RELAYD_PROVIDER_" + name + "_KEY_NAME")
-	keyAlgorithm := os.Getenv("RELAYD_PROVIDER_" + name + "_KEY_ALGORITHM")
-	key := os.Getenv("RELAYD_PROVIDER_" + name + "_KEY")
+	server := os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_SERVER")
+	keyName := os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_KEY_NAME")
+	keyAlgorithm := os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_KEY_ALGORITHM")
+	key := os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_KEY")
 
 	if keyAlgorithm == "" {
 		keyAlgorithm = "hmac-sha256."

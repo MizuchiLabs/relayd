@@ -2,7 +2,6 @@ package dns
 
 import (
 	"os"
-	"strings"
 
 	"github.com/libdns/powerdns"
 	"github.com/mizuchilabs/relayd/internal/config"
@@ -10,8 +9,7 @@ import (
 
 // NewPowerDNSProvider creates a new PowerDNS provider wrapped for relayd.
 func NewPowerDNSProvider(cfg config.Provider) Provider {
-	name := strings.ToUpper(strings.ReplaceAll(cfg.Type, "-", "_"))
-	url := os.Getenv("RELAYD_PROVIDER_" + name + "_URL")
+	url := os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_URL")
 	if url == "" {
 		url = "http://localhost:8081"
 	}

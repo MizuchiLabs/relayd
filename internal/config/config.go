@@ -12,9 +12,9 @@ import (
 
 // Config holds the configuration for relayd.
 type Config struct {
-	Force        bool
-	SyncInterval time.Duration
-	Providers    []Provider
+	Force     bool
+	Interval  time.Duration
+	Providers []Provider
 }
 
 // Provider holds the configuration for a DNS provider.
@@ -29,8 +29,8 @@ type Provider struct {
 // New creates a new Config from a CLI command.
 func New(cmd *cli.Command) Config {
 	cfg := Config{
-		Force:        cmd.Bool("force"),
-		SyncInterval: cmd.Duration("sync-interval"),
+		Force:    cmd.Bool("force"),
+		Interval: cmd.Duration("interval"),
 	}
 
 	// Auto-discover providers by scanning environment variables

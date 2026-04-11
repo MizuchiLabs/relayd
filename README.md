@@ -50,7 +50,7 @@ Relayd can be configured entirely via environment variables.
 
 | Variable                             | Default | Description                                                       |
 | :----------------------------------- | :------ | :---------------------------------------------------------------- |
-| `RELAYD_SYNC_INTERVAL`               | `5m`    | Background sync interval (e.g. `5m`, `1h`).                       |
+| `RELAYD_INTERVAL`                    | `5m`    | Background sync interval (e.g. `5m`, `1h`).                       |
 | `RELAYD_FORCE`                       | `false` | Forcefully overwrite existing DNS records ignoring TXT ownership. |
 | `RELAYD_TARGET_LOCAL_OVERRIDE_IPV4`  | _auto_  | Hardcode the local IPv4 address instead of auto-discovering.      |
 | `RELAYD_TARGET_PUBLIC_OVERRIDE_IPV4` | _auto_  | Hardcode the public IPv4 address instead of auto-discovering.     |
@@ -76,14 +76,14 @@ RELAYD_PROVIDER_CLOUDFLARE_TOKEN=your-token
 RELAYD_PROVIDER_CLOUDFLARE_ZONES=example.com
 ```
 
-#### PowerDNS (Local)
+#### Pi-hole
 
 ```env
-RELAYD_PROVIDER_PDNS_TYPE=powerdns
-RELAYD_PROVIDER_PDNS_SCOPE=local
-RELAYD_PROVIDER_PDNS_URL=http://10.0.0.5:8081
-RELAYD_PROVIDER_PDNS_TOKEN=your-api-key
-RELAYD_PROVIDER_PDNS_ZONES=home.arpa
+RELAYD_PROVIDER_PIHOLE_TYPE=pihole
+RELAYD_PROVIDER_PIHOLE_SCOPE=local
+RELAYD_PROVIDER_PIHOLE_URL=http://10.0.0.5:8080
+RELAYD_PROVIDER_PIHOLE_TOKEN=your-api-key
+RELAYD_PROVIDER_PIHOLE_ZONES=home.local
 ```
 
 #### RFC2136 (Technitium, BIND)
