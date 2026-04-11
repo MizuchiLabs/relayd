@@ -30,7 +30,7 @@ tasks:
   snapshot:
     desc: Build snapshot
     cmds:
-      - goreleaser --snapshot --clean --skip=validate
+      - goreleaser --snapshot --clean --skip=validate,sign,sbom,archive
 
   # 󱓞  Release
   release:

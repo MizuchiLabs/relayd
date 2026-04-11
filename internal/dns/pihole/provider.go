@@ -42,9 +42,9 @@ func (p *Provider) GetRecords(ctx context.Context, zone string) ([]libdns.Record
 					typ = "AAAA"
 				}
 				records = append(records, libdns.RR{
-					Type:  typ,
-					Name:  rel,
-					Data:  ip,
+					Type: typ,
+					Name: rel,
+					Data: ip,
 				})
 			}
 		}
@@ -62,9 +62,9 @@ func (p *Provider) GetRecords(ctx context.Context, zone string) ([]libdns.Record
 			if strings.HasSuffix(domain, zoneTrimmed) {
 				rel := libdns.RelativeName(domain+".", zone)
 				records = append(records, libdns.RR{
-					Type:  "CNAME",
-					Name:  rel,
-					Data:  target,
+					Type: "CNAME",
+					Name: rel,
+					Data: target,
 				})
 			}
 		}
