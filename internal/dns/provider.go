@@ -45,6 +45,8 @@ func BuildProviders(cfgs []config.Provider) ([]Provider, error) {
 			providers = append(providers, NewPowerDNSProvider(cfg))
 		case "unifi":
 			providers = append(providers, NewUnifiProvider(cfg))
+		case "pihole":
+			providers = append(providers, NewPiholeProvider(cfg))
 		case "rfc2136":
 			providers = append(providers, NewRFC2136Provider(cfg))
 		default:

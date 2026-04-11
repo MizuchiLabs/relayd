@@ -19,6 +19,7 @@ type Config struct {
 
 // Provider holds the configuration for a DNS provider.
 type Provider struct {
+	Name  string
 	Type  string
 	Scope string
 	Zones []string
@@ -49,6 +50,7 @@ func New(cmd *cli.Command) Config {
 	for name := range providerNames {
 		pfx := "RELAYD_PROVIDER_" + name + "_"
 		cfg.Providers = append(cfg.Providers, Provider{
+			Name:  name,
 			Type:  os.Getenv(pfx + "TYPE"),
 			Scope: util.GetEnv(pfx+"SCOPE", "public"),
 			Zones: util.SplitCSV(os.Getenv(pfx + "ZONES")),

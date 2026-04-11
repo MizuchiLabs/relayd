@@ -47,10 +47,16 @@ func Apply(
 		rel := libdns.RelativeName(fqdn, util.WithDot(zone))
 
 		for _, ip := range target.IPv4 {
-			desiredRecords = append(desiredRecords, dns.Record{Type: "A", Name: rel, Value: ip, TTL: ttl})
+			desiredRecords = append(
+				desiredRecords,
+				dns.Record{Type: "A", Name: rel, Value: ip, TTL: ttl},
+			)
 		}
 		for _, ip := range target.IPv6 {
-			desiredRecords = append(desiredRecords, dns.Record{Type: "AAAA", Name: rel, Value: ip, TTL: ttl})
+			desiredRecords = append(
+				desiredRecords,
+				dns.Record{Type: "AAAA", Name: rel, Value: ip, TTL: ttl},
+			)
 		}
 
 		if !cfg.Force {
