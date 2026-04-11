@@ -10,8 +10,8 @@ before:
     - go mod tidy
     - go mod verify
 
-gomod:
-  proxy: true
+# gomod:
+#   proxy: true
 
 builds:
   - binary: "{{ .ProjectName }}"
