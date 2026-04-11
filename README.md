@@ -66,43 +66,15 @@ Relayd can be configured entirely via environment variables.
 
 Providers are automatically discovered by scanning your environment variables for any variable ending in `_TYPE` with the `RELAYD_PROVIDER_` prefix. You can name your providers anything you like (e.g., `CF`, `LOCAL`, `MYDNS`).
 
-**Common Variables for all providers:**
+For detailed configuration examples per provider, see the [docs/providers](/docs/providers) directory:
 
-- `..._TYPE`: The type of provider (`cloudflare`, `digitalocean`, `route53`, `powerdns`, `unifi`, `rfc2136`).
-- `..._SCOPE`: `public` (uses external WAN IP) or `local` (uses local LAN interface IP). Defaults to `public`.
-- `..._ZONES`: Comma-separated list of root zones to manage (e.g. `example.com,test.com`).
-- `..._TOKEN`: The API token (for Cloudflare, DigitalOcean, PowerDNS, etc).
-
-**Provider-Specific Examples:**
-
-#### Cloudflare
-
-```env
-RELAYD_PROVIDER_CLOUDFLARE_TYPE=cloudflare
-RELAYD_PROVIDER_CLOUDFLARE_TOKEN=your-token
-RELAYD_PROVIDER_CLOUDFLARE_ZONES=example.com
-```
-
-#### Pi-hole
-
-```env
-RELAYD_PROVIDER_PIHOLE_TYPE=pihole
-RELAYD_PROVIDER_PIHOLE_SCOPE=local
-RELAYD_PROVIDER_PIHOLE_URL=http://10.0.0.5:8080
-RELAYD_PROVIDER_PIHOLE_TOKEN=your-api-key
-RELAYD_PROVIDER_PIHOLE_ZONES=home.local
-```
-
-#### RFC2136 (Technitium, BIND)
-
-```env
-RELAYD_PROVIDER_TECH_TYPE=rfc2136
-RELAYD_PROVIDER_TECH_SCOPE=local
-RELAYD_PROVIDER_TECH_SERVER=192.168.1.5:53
-RELAYD_PROVIDER_TECH_KEY_NAME=tsig-key
-RELAYD_PROVIDER_TECH_KEY=base64-encoded-key
-RELAYD_PROVIDER_TECH_ZONES=home.local
-```
+- [Cloudflare](/docs/providers/cloudflare.md)
+- [DigitalOcean](/docs/providers/digitalocean.md)
+- [Pi-hole](/docs/providers/pihole.md)
+- [PowerDNS](/docs/providers/powerdns.md)
+- [AWS Route53](/docs/providers/route53.md)
+- [RFC2136](/docs/providers/rfc2136.md)
+- [UniFi](/docs/providers/unifi.md)
 
 ## License
 
