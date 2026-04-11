@@ -39,8 +39,8 @@ func (s *DockerSource) ListHostnames(ctx context.Context) ([]string, error) {
 
 	hosts := make(map[string]bool)
 	for _, c := range containers {
-		if c.Labels["relayd.enable"] == "false" {
-			continue // Default true or explicitly disabled
+		if c.Labels["relayd.enable"] != "true" {
+			continue // Skip non-relayd containers
 		}
 		for _, host := range extractHostnames(c.Labels) {
 			hosts[host] = true

@@ -44,7 +44,8 @@ services:
   whoami:
     image: traefik/whoami
     labels:
-      - "relayd.hosts=whoami.example.com,test.example.com"
+      - relayd.enabled=true
+      - relayd.hosts=whoami.example.com,test.example.com
 ```
 
 If you use **Traefik**, `relayd` automatically parses `Host()` rules, so you don't even need to add the `relayd.hosts` label!
