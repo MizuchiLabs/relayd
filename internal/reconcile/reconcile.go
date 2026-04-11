@@ -3,8 +3,8 @@ package reconcile
 
 import (
 	"context"
+	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/libdns/libdns"
 	"github.com/mizuchilabs/relayd/internal/config"
@@ -38,24 +38,49 @@ func Apply(
 	desired := desiredSet(hosts, zone)
 	managed := managedSet(records, zone)
 
+	existingHosts := make(map[string]struct{})
+	for _, r := range records {
+		if r.Type == "A" || r.Type == "AAAA" || r.Type == "CNAME" {
+			name := r.Name
+			if name == "@" || name == "" {
+				existingHosts[strings.TrimSuffix(util.WithDot(zone), ".")] = struct{}{}
+			} else {
+				absName := libdns.AbsoluteName(r.Name, util.WithDot(zone))
+				existingHosts[strings.TrimSuffix(absName, ".")] = struct{}{}
+			}
+		}
+	}
+
 	var changes dns.ChangeSet
-	ttl := 300 * time.Second
 
 	var desiredRecords []dns.Record
 
 	for fqdn := range desired {
+		if !cfg.Force {
+			if _, isManaged := managed[fqdn]; !isManaged {
+				if _, exists := existingHosts[fqdn]; exists {
+					slog.Warn(
+						"Skipping unmanaged host with existing records (no relayd TXT record found)",
+						"host",
+						fqdn,
+					)
+					continue
+				}
+			}
+		}
+
 		rel := libdns.RelativeName(fqdn, util.WithDot(zone))
 
 		for _, ip := range target.IPv4 {
 			desiredRecords = append(
 				desiredRecords,
-				dns.Record{Type: "A", Name: rel, Value: ip, TTL: ttl},
+				dns.Record{Type: "A", Name: rel, Value: ip},
 			)
 		}
 		for _, ip := range target.IPv6 {
 			desiredRecords = append(
 				desiredRecords,
-				dns.Record{Type: "AAAA", Name: rel, Value: ip, TTL: ttl},
+				dns.Record{Type: "AAAA", Name: rel, Value: ip},
 			)
 		}
 
@@ -64,7 +89,6 @@ func Apply(
 				Type:  "TXT",
 				Name:  txtName(rel),
 				Value: "relayd",
-				TTL:   ttl,
 			})
 		}
 	}
@@ -156,7 +180,8 @@ func managedSet(records []dns.Record, zone string) map[string]struct{} {
 	zDot := util.WithDot(zone)
 
 	for _, r := range records {
-		if r.Type == "TXT" && r.Value == "relayd" {
+		val := strings.Trim(r.Value, "\"")
+		if r.Type == "TXT" && val == "relayd" {
 			name := strings.Trim(r.Name, ".")
 			if name == txtPrefix {
 				out[strings.TrimSuffix(zDot, ".")] = struct{}{}

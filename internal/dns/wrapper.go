@@ -3,7 +3,6 @@ package dns
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/libdns/libdns"
 )
@@ -85,7 +84,6 @@ func toLibDNS(records []Record) []libdns.Record {
 				Type: strings.ToUpper(r.Type),
 				Name: r.Name,
 				Data: r.Value,
-				TTL:  r.TTL,
 			})
 		}
 	}
@@ -98,14 +96,6 @@ func fromLibDNS(record libdns.Record) Record {
 		Type:     rr.Type,
 		Name:     rr.Name,
 		Value:    rr.Data,
-		TTL:      sanitizeTTL(rr.TTL),
 		Original: record,
 	}
-}
-
-func sanitizeTTL(ttl time.Duration) time.Duration {
-	if ttl < 0 {
-		return 0
-	}
-	return ttl
 }
