@@ -44,7 +44,7 @@ services:
   whoami:
     image: traefik/whoami
     labels:
-      - relayd.enabled=true
+      - relayd.enable=true
       - relayd.hosts=whoami.example.com,test.example.com
 ```
 
