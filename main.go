@@ -75,11 +75,6 @@ For manual domain assignments, simply attach the 'relayd.hosts' label to your co
 				Sources: cli.EnvVars("RELAYD_SYNC_INTERVAL"),
 				Usage:   "Time interval for recurring background DNS synchronization (e.g. 5m, 1h)",
 			},
-			&cli.StringFlag{
-				Name:    "providers",
-				Sources: cli.EnvVars("RELAYD_PROVIDERS"),
-				Usage:   "Comma-separated list of active provider names (e.g. cloudflare,powerdns)",
-			},
 		},
 	}
 

@@ -50,7 +50,6 @@ Relayd can be configured entirely via environment variables.
 
 | Variable                             | Default | Description                                                       |
 | :----------------------------------- | :------ | :---------------------------------------------------------------- |
-| `RELAYD_PROVIDERS`                   | _empty_ | Comma-separated list of provider names to activate.               |
 | `RELAYD_SYNC_INTERVAL`               | `5m`    | Background sync interval (e.g. `5m`, `1h`).                       |
 | `RELAYD_FORCE`                       | `false` | Forcefully overwrite existing DNS records ignoring TXT ownership. |
 | `RELAYD_TARGET_LOCAL_OVERRIDE_IPV4`  | _auto_  | Hardcode the local IPv4 address instead of auto-discovering.      |
@@ -58,7 +57,7 @@ Relayd can be configured entirely via environment variables.
 
 ### Configuring Providers
 
-Every provider configuration is prefixed with `RELAYD_PROVIDER_<NAME>_`.
+Providers are automatically discovered by scanning your environment variables for any variable ending in `_TYPE` with the `RELAYD_PROVIDER_` prefix. You can name your providers anything you like (e.g., `CF`, `LOCAL`, `MYDNS`).
 
 **Common Variables for all providers:**
 

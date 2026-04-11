@@ -32,8 +32,21 @@ func New(cmd *cli.Command) Config {
 		SyncInterval: cmd.Duration("sync-interval"),
 	}
 
-	for _, name := range util.SplitCSV(cmd.String("providers")) {
-		name = strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
+	// Auto-discover providers by scanning environment variables
+	providerNames := make(map[string]struct{})
+	for _, env := range os.Environ() {
+		parts := strings.SplitN(env, "=", 2)
+		key := parts[0]
+		if strings.HasPrefix(key, "RELAYD_PROVIDER_") && strings.HasSuffix(key, "_TYPE") {
+			// Extract the <NAME> part from RELAYD_PROVIDER_<NAME>_TYPE
+			name := strings.TrimSuffix(strings.TrimPrefix(key, "RELAYD_PROVIDER_"), "_TYPE")
+			if name != "" {
+				providerNames[name] = struct{}{}
+			}
+		}
+	}
+
+	for name := range providerNames {
 		pfx := "RELAYD_PROVIDER_" + name + "_"
 		cfg.Providers = append(cfg.Providers, Provider{
 			Type:  os.Getenv(pfx + "TYPE"),
