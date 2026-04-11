@@ -101,11 +101,16 @@ func toLibDNS(records []Record) []libdns.Record {
 		if r.Original != nil {
 			out = append(out, r.Original)
 		} else {
-			out = append(out, libdns.RR{
+			rr := libdns.RR{
 				Type: strings.ToUpper(r.Type),
 				Name: r.Name,
 				Data: r.Value,
-			})
+			}
+			if parsed, err := rr.Parse(); err == nil && parsed != nil {
+				out = append(out, parsed)
+			} else {
+				out = append(out, rr)
+			}
 		}
 	}
 	return out

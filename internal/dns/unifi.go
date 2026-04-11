@@ -3,8 +3,8 @@ package dns
 import (
 	"os"
 
-	"github.com/libdns/unifi"
 	"github.com/mizuchilabs/relayd/internal/config"
+	"github.com/mizuchilabs/relayd/internal/dns/unifi"
 )
 
 // NewUnifiProvider creates a new UniFi DNS provider wrapped for relayd.
@@ -15,8 +15,8 @@ func NewUnifiProvider(cfg config.Provider) Provider {
 	}
 
 	return newWrapper(cfg, &unifi.Provider{
-		SiteId:  siteID,
-		ApiKey:  cfg.Token,
-		BaseUrl: cfg.URL,
+		Server: cfg.URL,
+		Token:  cfg.Token,
+		SiteID: siteID,
 	})
 }

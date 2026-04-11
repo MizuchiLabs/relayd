@@ -9,7 +9,6 @@ require (
 	github.com/libdns/powerdns v0.1.4
 	github.com/libdns/rfc2136 v1.0.1
 	github.com/libdns/route53 v1.6.0
-	github.com/libdns/unifi v1.0.0
 	github.com/urfave/cli/v3 v3.8.0
 	golang.org/x/sync v0.20.0
 )
