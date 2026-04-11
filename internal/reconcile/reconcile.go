@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/libdns/libdns"
-	"github.com/mizuchilabs/relayd/internal/config"
 	"github.com/mizuchilabs/relayd/internal/dns"
 	"github.com/mizuchilabs/relayd/internal/targets"
 	"github.com/mizuchilabs/relayd/internal/util"
@@ -26,7 +25,6 @@ func Apply(
 	ctx context.Context,
 	provider dns.Provider,
 	zone string,
-	cfg config.Config,
 	hosts []string,
 	target targets.IPs,
 ) error {
@@ -56,7 +54,7 @@ func Apply(
 	var desiredRecords []dns.Record
 
 	for fqdn := range desired {
-		if !cfg.Force {
+		if !provider.Force() {
 			if _, isManaged := managed[fqdn]; !isManaged {
 				if _, exists := existingHosts[fqdn]; exists {
 					slog.Warn(
@@ -84,7 +82,7 @@ func Apply(
 			)
 		}
 
-		if !cfg.Force {
+		if !provider.Force() {
 			desiredRecords = append(desiredRecords, dns.Record{
 				Type:  "TXT",
 				Name:  txtName(rel),
@@ -141,7 +139,7 @@ func Apply(
 		}
 
 		shouldDelete := false
-		if !cfg.Force {
+		if !provider.Force() {
 			if _, isManaged := managed[hostToCheck]; isManaged {
 				shouldDelete = true
 			}

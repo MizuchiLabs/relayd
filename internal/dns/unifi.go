@@ -14,13 +14,9 @@ func NewUnifiProvider(cfg config.Provider) Provider {
 		siteID = "default"
 	}
 
-	return &wrapper{
-		scope: cfg.Scope,
-		zones: append([]string(nil), cfg.Zones...),
-		client: &unifi.Provider{
-			SiteId:  siteID,
-			ApiKey:  cfg.Token,
-			BaseUrl: cfg.URL,
-		},
-	}
+	return newWrapper(cfg, &unifi.Provider{
+		SiteId:  siteID,
+		ApiKey:  cfg.Token,
+		BaseUrl: cfg.URL,
+	})
 }

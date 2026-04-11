@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/libdns/libdns"
+	"github.com/mizuchilabs/relayd/internal/config"
 )
 
 // libDNSClient defines the interface expected from a libdns provider.
@@ -28,7 +29,18 @@ type wrapper struct {
 	name   string
 	scope  string
 	zones  []string
+	force  bool
 	client libDNSClient
+}
+
+func newWrapper(cfg config.Provider, client libDNSClient) *wrapper {
+	return &wrapper{
+		name:   cfg.Name,
+		scope:  cfg.Scope,
+		zones:  append([]string(nil), cfg.Zones...),
+		force:  cfg.Force,
+		client: client,
+	}
 }
 
 func (w *wrapper) Name() string {
@@ -41,6 +53,10 @@ func (w *wrapper) Scope() string {
 
 func (w *wrapper) Zones() []string {
 	return append([]string(nil), w.zones...)
+}
+
+func (w *wrapper) Force() bool {
+	return w.force
 }
 
 func (w *wrapper) Records(ctx context.Context, zone string) ([]Record, error) {

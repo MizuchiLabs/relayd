@@ -65,11 +65,6 @@ For manual domain assignments, simply attach the 'relayd.hosts' label to your co
 				Usage:   "Enable debug logging",
 				Sources: cli.EnvVars("RELAYD_DEBUG"),
 			},
-			&cli.BoolFlag{
-				Name:    "force",
-				Sources: cli.EnvVars("RELAYD_FORCE"),
-				Usage:   "Forcefully overwrite existing DNS records ignoring TXT ownership",
-			},
 			&cli.DurationFlag{
 				Name:    "interval",
 				Value:   5 * time.Minute,

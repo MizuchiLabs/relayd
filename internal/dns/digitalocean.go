@@ -7,11 +7,7 @@ import (
 
 // NewDigitalOceanProvider creates a new DigitalOcean DNS provider wrapped for relayd.
 func NewDigitalOceanProvider(cfg config.Provider) Provider {
-	return &wrapper{
-		scope: cfg.Scope,
-		zones: append([]string(nil), cfg.Zones...),
-		client: &digitalocean.Provider{
-			APIToken: cfg.Token,
-		},
-	}
+	return newWrapper(cfg, &digitalocean.Provider{
+		APIToken: cfg.Token,
+	})
 }

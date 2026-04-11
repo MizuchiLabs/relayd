@@ -26,6 +26,7 @@ type Provider interface {
 	Name() string
 	Scope() string
 	Zones() []string
+	Force() bool
 	Records(ctx context.Context, zone string) ([]Record, error)
 	Apply(ctx context.Context, zone string, changes ChangeSet) error
 }

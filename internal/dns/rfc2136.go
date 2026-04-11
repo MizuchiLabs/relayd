@@ -17,14 +17,10 @@ func NewRFC2136Provider(cfg config.Provider) Provider {
 		keyAlgorithm = "hmac-sha256."
 	}
 
-	return &wrapper{
-		scope: cfg.Scope,
-		zones: append([]string(nil), cfg.Zones...),
-		client: &rfc2136.Provider{
-			Server:  cfg.URL,
-			KeyName: keyName,
-			KeyAlg:  keyAlgorithm,
-			Key:     key,
-		},
-	}
+	return newWrapper(cfg, &rfc2136.Provider{
+		Server:  cfg.URL,
+		KeyName: keyName,
+		KeyAlg:  keyAlgorithm,
+		Key:     key,
+	})
 }

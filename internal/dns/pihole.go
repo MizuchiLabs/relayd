@@ -7,12 +7,8 @@ import (
 
 // NewPiholeProvider creates a new Pi-hole provider wrapped for relayd.
 func NewPiholeProvider(cfg config.Provider) Provider {
-	return &wrapper{
-		scope: cfg.Scope,
-		zones: append([]string(nil), cfg.Zones...),
-		client: &pihole.Provider{
-			Server:   cfg.URL,
-			Password: cfg.Token,
-		},
-	}
+	return newWrapper(cfg, &pihole.Provider{
+		Server:   cfg.URL,
+		Password: cfg.Token,
+	})
 }

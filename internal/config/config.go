@@ -3,6 +3,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 
 // Config holds the configuration for relayd.
 type Config struct {
-	Force     bool
 	Interval  time.Duration
 	Providers []Provider
 }
@@ -25,11 +25,11 @@ type Provider struct {
 	Zones []string
 	Token string
 	URL   string
+	Force bool
 }
 
 func New(cmd *cli.Command) Config {
 	cfg := Config{
-		Force:    cmd.Bool("force"),
 		Interval: cmd.Duration("interval"),
 	}
 
@@ -49,6 +49,15 @@ func New(cmd *cli.Command) Config {
 
 	for name := range providerNames {
 		pfx := "RELAYD_PROVIDER_" + name + "_"
+		
+		forceStr := os.Getenv(pfx + "FORCE")
+		force := false
+		if forceStr != "" {
+			if parsed, err := strconv.ParseBool(forceStr); err == nil {
+				force = parsed
+			}
+		}
+
 		cfg.Providers = append(cfg.Providers, Provider{
 			Name:  name,
 			Type:  os.Getenv(pfx + "TYPE"),
@@ -56,6 +65,7 @@ func New(cmd *cli.Command) Config {
 			Zones: util.SplitCSV(os.Getenv(pfx + "ZONES")),
 			Token: os.Getenv(pfx + "TOKEN"),
 			URL:   os.Getenv(pfx + "URL"),
+			Force: force,
 		})
 	}
 

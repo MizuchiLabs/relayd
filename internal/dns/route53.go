@@ -7,10 +7,5 @@ import (
 
 // NewRoute53Provider creates a new Route53 DNS provider wrapped for relayd.
 func NewRoute53Provider(cfg config.Provider) Provider {
-	return &wrapper{
-		name:   cfg.Name,
-		scope:  cfg.Scope,
-		zones:  append([]string(nil), cfg.Zones...),
-		client: &route53.Provider{},
-	}
+	return newWrapper(cfg, &route53.Provider{})
 }

@@ -29,7 +29,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 	}
 	defer func() { _ = source.Close() }()
 
-	if err := syncAll(ctx, cfg, providers, source); err != nil {
+	if err := syncAll(ctx, providers, source); err != nil {
 		slog.Error("Initial sync failed", "error", err)
 	}
 
@@ -46,12 +46,12 @@ func Run(ctx context.Context, cfg config.Config) error {
 			return err
 		case ev := <-events:
 			slog.Debug("Docker event triggered sync", "action", ev.Action, "id", ev.ID)
-			if err := syncAll(ctx, cfg, providers, source); err != nil {
+			if err := syncAll(ctx, providers, source); err != nil {
 				slog.Error("Event-triggered sync failed", "error", err)
 			}
 		case <-ticker.C:
 			slog.Debug("Background sync triggered")
-			if err := syncAll(ctx, cfg, providers, source); err != nil {
+			if err := syncAll(ctx, providers, source); err != nil {
 				slog.Error("Background sync failed", "error", err)
 			}
 		}
@@ -60,7 +60,6 @@ func Run(ctx context.Context, cfg config.Config) error {
 
 func syncAll(
 	ctx context.Context,
-	cfg config.Config,
 	providers []dns.Provider,
 	source *discovery.DockerSource,
 ) error {
@@ -133,7 +132,7 @@ func syncAll(
 			}
 
 			for _, zone := range p.Zones() {
-				if err := reconcile.Apply(gCtx, p, zone, cfg, providerHosts, ips); err != nil {
+				if err := reconcile.Apply(gCtx, p, zone, providerHosts, ips); err != nil {
 					slog.Error("Sync failed", "provider", p.Name(), "zone", zone, "error", err)
 				}
 			}

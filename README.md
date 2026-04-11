@@ -16,7 +16,7 @@ It supports dual-stack IPv4/IPv6 out of the box, handles seamless resolution of 
 
 - **Docker Label Discovery**: Automatically extracts hostnames from `relayd.hosts` and Traefik `.rule` labels.
 - **Dual-Stack Support**: Synchronizes both `A` (IPv4) and `AAAA` (IPv6) records simultaneously.
-- **Safe Ownership**: Uses `TXT` records to track ownership, preventing it from overwriting domains it doesn't own (unless `--force` is used).
+- **Safe Ownership**: Uses `TXT` records to track ownership, preventing it from overwriting domains it doesn't own (can be bypassed using provider-specific force option).
 - **Multi-Provider**: Sync to Cloudflare for public domains while simultaneously syncing to PowerDNS for local domains.
 
 ## Usage
@@ -68,14 +68,13 @@ Relayd can be configured entirely via environment variables.
 
 ### Global Options
 
-| Variable                      | Default | Description                                                       |
-| :---------------------------- | :------ | :---------------------------------------------------------------- |
-| `RELAYD_INTERVAL`             | `5m`    | Background sync interval (e.g. `5m`, `1h`).                       |
-| `RELAYD_FORCE`                | `false` | Forcefully overwrite existing DNS records ignoring TXT ownership. |
-| `RELAYD_LOCAL_OVERRIDE_IPV4`  | _auto_  | Hardcode the local IPv4 address instead of auto-discovering.      |
-| `RELAYD_LOCAL_OVERRIDE_IPV6`  | _auto_  | Hardcode the local IPv6 address instead of auto-discovering.      |
-| `RELAYD_PUBLIC_OVERRIDE_IPV4` | _auto_  | Hardcode the public IPv4 address instead of auto-discovering.     |
-| `RELAYD_PUBLIC_OVERRIDE_IPV6` | _auto_  | Hardcode the public IPv6 address instead of auto-discovering.     |
+| Variable                      | Default | Description                                                   |
+| :---------------------------- | :------ | :------------------------------------------------------------ |
+| `RELAYD_INTERVAL`             | `5m`    | Background sync interval (e.g. `5m`, `1h`).                   |
+| `RELAYD_LOCAL_OVERRIDE_IPV4`  | _auto_  | Hardcode the local IPv4 address instead of auto-discovering.  |
+| `RELAYD_LOCAL_OVERRIDE_IPV6`  | _auto_  | Hardcode the local IPv6 address instead of auto-discovering.  |
+| `RELAYD_PUBLIC_OVERRIDE_IPV4` | _auto_  | Hardcode the public IPv4 address instead of auto-discovering. |
+| `RELAYD_PUBLIC_OVERRIDE_IPV6` | _auto_  | Hardcode the public IPv6 address instead of auto-discovering. |
 
 ### Configuring Providers
 
