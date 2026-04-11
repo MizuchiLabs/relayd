@@ -14,7 +14,6 @@ It supports dual-stack IPv4/IPv6 out of the box, handles seamless resolution of 
 
 ## Features
 
-- **Zero-config Defaults**: Drop it into your `docker-compose.yml` and it just works.
 - **Docker Label Discovery**: Automatically extracts hostnames from `relayd.hosts` and Traefik `.rule` labels.
 - **Dual-Stack Support**: Synchronizes both `A` (IPv4) and `AAAA` (IPv6) records simultaneously.
 - **Safe Ownership**: Uses `TXT` records to track ownership, preventing it from overwriting domains it doesn't own (unless `--force` is used).
@@ -108,3 +107,7 @@ RELAYD_PROVIDER_TECH_ZONES=home.local
 ## License
 
 Apache 2.0 License - see [LICENSE](LICENSE) for details
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

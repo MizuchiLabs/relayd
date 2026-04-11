@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -25,7 +26,7 @@ func main() {
 		Suggest:               true,
 		Name:                  "relayd",
 		Version:               Version,
-		Usage:                 "A lightweight external DNS agent for Docker",
+		Usage:                 "relayd [command]",
 		Description: `Relayd automatically updates DNS records (A/AAAA/TXT) across various providers (Cloudflare, Route53, PowerDNS, etc.) based on Docker container labels. 
 		
 It handles both local (LAN) and public (WAN) IPs seamlessly using dual-stack IPv4/IPv6 support.
@@ -82,7 +83,6 @@ For manual domain assignments, simply attach the 'relayd.hosts' label to your co
 	defer cancel()
 
 	if err := cmd.Run(ctx, os.Args); err != nil {
-		slog.Error("Fatal error", "err", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
