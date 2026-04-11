@@ -30,7 +30,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      - RELAYD_PROVIDERS=cloudflare
+      - RELAYD_PROVIDER_CLOUDFLARE_TYPE=cloudflare
       - RELAYD_PROVIDER_CLOUDFLARE_TOKEN=your-api-token
       - RELAYD_PROVIDER_CLOUDFLARE_ZONES=example.com
 ```
