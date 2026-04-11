@@ -48,12 +48,12 @@ jobs:
       - name: Build
         run: go build -ldflags="-s -w" -o bin/
 
-      - name: ghcr.io cleanup
-        uses: dataaxiom/ghcr-cleanup-action@v1
-        with:
-          keep-n-tagged: 10
-          delete-untagged: true
-          delete-ghost-images: true
-          delete-partial-images: true
-          delete-orphaned-images: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # - name: ghcr.io cleanup
+      #   uses: dataaxiom/ghcr-cleanup-action@v1
+      #   with:
+      #     keep-n-tagged: 10
+      #     delete-untagged: true
+      #     delete-ghost-images: true
+      #     delete-partial-images: true
+      #     delete-orphaned-images: true
+      #     token: ${{ secrets.GITHUB_TOKEN }}
