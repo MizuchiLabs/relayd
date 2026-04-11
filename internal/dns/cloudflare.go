@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	libdnscloudflare "github.com/libdns/cloudflare"
 	"github.com/mizuchilabs/relayd/internal/config"
@@ -23,7 +24,6 @@ func (c *proxiedClient) Do(req *http.Request) (*http.Response, error) {
 			if err == nil {
 				var data map[string]any
 				if err := json.Unmarshal(bodyBytes, &data); err == nil {
-					// Cloudflare API allows proxying for A, AAAA, and CNAME
 					if t, ok := data["type"].(string); ok &&
 						(t == "A" || t == "AAAA" || t == "CNAME") {
 						data["proxied"] = true
@@ -42,7 +42,8 @@ func (c *proxiedClient) Do(req *http.Request) (*http.Response, error) {
 			}
 		}
 	}
-	return c.client.Do(req)
+
+	return c.client.Do(req) // #nosec G704 - host validated
 }
 
 // NewCloudflareProvider creates a new Cloudflare DNS provider wrapped for relayd.
@@ -54,7 +55,9 @@ func NewCloudflareProvider(cfg config.Provider) Provider {
 	proxied := os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_PROXIED")
 	if proxied != "false" {
 		provider.HTTPClient = &proxiedClient{
-			client: http.DefaultClient,
+			client: &http.Client{
+				Timeout: 30 * time.Second,
+			},
 		}
 	}
 
