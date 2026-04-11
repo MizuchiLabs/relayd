@@ -37,7 +37,7 @@ services:
 
 ### Adding domains to your containers
 
-You can configure DNS targets by adding the `relayd.hosts` label to any container:
+You can configure DNS targets by adding the `relayd.enable` and `relayd.hosts` label to any container:
 
 ```yaml
 services:
