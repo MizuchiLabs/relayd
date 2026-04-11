@@ -109,6 +109,20 @@ func syncAll(
 
 	for _, p := range providers {
 		g.Go(func() error {
+			var providerHosts []string
+			for host, allowed := range hosts {
+				isAllowed := false
+				for _, a := range allowed {
+					if a == "*" || a == p.Name() || a == p.Scope() {
+						isAllowed = true
+						break
+					}
+				}
+				if isAllowed {
+					providerHosts = append(providerHosts, host)
+				}
+			}
+
 			ips := publicIP
 			if p.Scope() == "local" {
 				ips = localIP
@@ -119,8 +133,8 @@ func syncAll(
 			}
 
 			for _, zone := range p.Zones() {
-				if err := reconcile.Apply(gCtx, p, zone, cfg, hosts, ips); err != nil {
-					slog.Error("Sync failed", "provider", p.Scope(), "zone", zone, "error", err)
+				if err := reconcile.Apply(gCtx, p, zone, cfg, providerHosts, ips); err != nil {
+					slog.Error("Sync failed", "provider", p.Name(), "zone", zone, "error", err)
 				}
 			}
 			return nil

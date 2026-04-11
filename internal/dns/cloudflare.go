@@ -62,6 +62,7 @@ func NewCloudflareProvider(cfg config.Provider) Provider {
 	}
 
 	return &wrapper{
+		name:   cfg.Name,
 		scope:  cfg.Scope,
 		zones:  append([]string(nil), cfg.Zones...),
 		client: provider,

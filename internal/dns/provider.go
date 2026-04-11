@@ -23,6 +23,7 @@ type ChangeSet struct {
 }
 
 type Provider interface {
+	Name() string
 	Scope() string
 	Zones() []string
 	Records(ctx context.Context, zone string) ([]Record, error)

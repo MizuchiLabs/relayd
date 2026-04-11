@@ -3,6 +3,7 @@ package discovery
 
 import (
 	"context"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
@@ -31,25 +32,50 @@ func (s *DockerSource) Close() error {
 	return s.client.Close()
 }
 
-func (s *DockerSource) ListHostnames(ctx context.Context) ([]string, error) {
+func (s *DockerSource) ListHostnames(ctx context.Context) (map[string][]string, error) {
 	containers, err := s.client.ContainerList(ctx, container.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	hosts := make(map[string]bool)
+	hosts := make(map[string]map[string]bool)
 	for _, c := range containers {
 		if c.Labels["relayd.enable"] != "true" {
 			continue // Skip non-relayd containers
 		}
+
+		providerMap := make(map[string]bool)
+		if pVal, ok := c.Labels["relayd.providers"]; ok && pVal != "" {
+			for p := range strings.SplitSeq(pVal, ",") {
+				providerMap[strings.TrimSpace(p)] = true
+			}
+		}
+
 		for _, host := range extractHostnames(c.Labels) {
-			hosts[host] = true
+			if hosts[host] == nil {
+				hosts[host] = make(map[string]bool)
+			}
+			if len(providerMap) == 0 {
+				hosts[host]["*"] = true
+			} else {
+				for p := range providerMap {
+					hosts[host][p] = true
+				}
+			}
 		}
 	}
 
-	var out []string
-	for host := range hosts {
-		out = append(out, host)
+	out := make(map[string][]string)
+	for host, pm := range hosts {
+		if pm["*"] {
+			out[host] = []string{"*"}
+		} else {
+			var plist []string
+			for p := range pm {
+				plist = append(plist, p)
+			}
+			out[host] = plist
+		}
 	}
 	return out, nil
 }

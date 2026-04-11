@@ -25,9 +25,14 @@ type libDNSClient interface {
 
 // wrapper provides a uniform interface to a libDNSClient.
 type wrapper struct {
+	name   string
 	scope  string
 	zones  []string
 	client libDNSClient
+}
+
+func (w *wrapper) Name() string {
+	return w.name
 }
 
 func (w *wrapper) Scope() string {
