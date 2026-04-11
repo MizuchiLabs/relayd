@@ -68,15 +68,12 @@ func syncAll(
 	if err != nil {
 		return err
 	}
-	if len(hosts) == 0 {
-		return nil
-	}
 
-	g, gCtx := errgroup.WithContext(ctx)
+	resolveGroup, resolveCtx := errgroup.WithContext(ctx)
 
 	var localIP, publicIP targets.IPs
 
-	g.Go(func() error {
+	resolveGroup.Go(func() error {
 		ips, err := targets.ResolveLocalIP()
 		if err == nil {
 			localIP = ips
@@ -84,15 +81,15 @@ func syncAll(
 		return nil
 	})
 
-	g.Go(func() error {
-		ips, err := targets.ResolvePublicIP(gCtx)
+	resolveGroup.Go(func() error {
+		ips, err := targets.ResolvePublicIP(resolveCtx)
 		if err == nil {
 			publicIP = ips
 		}
 		return nil
 	})
 
-	_ = g.Wait()
+	_ = resolveGroup.Wait()
 
 	slog.Info(
 		"Syncing",
@@ -107,6 +104,8 @@ func syncAll(
 		"public_v6",
 		strings.Join(publicIP.IPv6, ","),
 	)
+
+	g, gCtx := errgroup.WithContext(ctx)
 
 	for _, p := range providers {
 		g.Go(func() error {
