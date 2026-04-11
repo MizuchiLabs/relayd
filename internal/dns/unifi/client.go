@@ -4,6 +4,7 @@ package unifi
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -55,7 +56,14 @@ type sitesResponse struct {
 
 func (c *Client) getClient() *http.Client {
 	if c.client == nil {
-		c.client = &http.Client{Timeout: 10 * time.Second}
+		customTransport := http.DefaultTransport.(*http.Transport).Clone()
+		// #nosec G402 - Unifi ships with self-signed certs
+		customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+		c.client = &http.Client{
+			Timeout:   10 * time.Second,
+			Transport: customTransport,
+		}
 	}
 	return c.client
 }
@@ -78,9 +86,7 @@ func (c *Client) doRequest(
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
+	defer func() { _ = resp.Body.Close() }()
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
