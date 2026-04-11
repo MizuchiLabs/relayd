@@ -33,7 +33,7 @@ func (s *DockerSource) Close() error {
 }
 
 func (s *DockerSource) ListHostnames(ctx context.Context) (map[string][]string, error) {
-	containers, err := s.client.ContainerList(ctx, container.ListOptions{})
+	containers, err := s.client.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return nil, err
 	}
