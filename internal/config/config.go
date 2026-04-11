@@ -49,7 +49,7 @@ func New(cmd *cli.Command) Config {
 
 	for name := range providerNames {
 		pfx := "RELAYD_PROVIDER_" + name + "_"
-		
+
 		forceStr := os.Getenv(pfx + "FORCE")
 		force := false
 		if forceStr != "" {
