@@ -1,3 +1,4 @@
+// Package unifi provides a client for the UniFi API.
 package unifi
 
 import (
