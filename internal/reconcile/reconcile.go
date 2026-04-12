@@ -3,7 +3,6 @@ package reconcile
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"strings"
 
@@ -165,7 +164,8 @@ func Apply(
 		return nil
 	}
 
-	slog.Info(fmt.Sprintf("Applying %d creates, %d deletes", len(changes.Create), len(changes.Delete)),
+	slog.Info("Applying changes",
+		"add", len(changes.Create), "delete", len(changes.Delete),
 		"provider", provider.Name(), "zone", zone,
 	)
 	return provider.Apply(ctx, zone, changes)

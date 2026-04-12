@@ -55,12 +55,6 @@ func ResolveLocalIP() (IPs, error) {
 		return ips, nil
 	}
 
-	if isInsideContainer() {
-		slog.Warn("Running inside a container without local IP overrides. " +
-			"Auto-detected IPs may be container-internal and not routable. " +
-			"Consider setting RELAYD_LOCAL_OVERRIDE_IPV4/IPV6 or using network_mode: host")
-	}
-
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return ips, fmt.Errorf("failed to list network interfaces: %w", err)
@@ -117,22 +111,6 @@ func ResolveLocalIP() (IPs, error) {
 	return ips, nil
 }
 
-// isInsideContainer checks if the process is running inside a container.
-func isInsideContainer() bool {
-	if _, err := os.Stat("/.dockerenv"); err == nil {
-		return true
-	}
-	// Fallback: check for container cgroup
-	if data, err := os.ReadFile("/proc/1/cgroup"); err == nil {
-		s := string(data)
-		if strings.Contains(s, "docker") || strings.Contains(s, "containerd") ||
-			strings.Contains(s, "kubepods") || strings.Contains(s, "/lxc/") {
-			return true
-		}
-	}
-	return false
-}
-
 var (
 	ipv4Providers = []string{
 		"https://api.ipify.org",
@@ -164,7 +142,8 @@ func ResolvePublicIP(ctx context.Context) (IPs, error) {
 
 	if len(ips.IPv4) == 0 {
 		g.Go(func() error {
-			if ip := fetchIPWithFallback(gCtx, client, ipv4Providers, "IPv4"); ip != "" && strings.Contains(ip, ".") {
+			if ip := fetchIPWithFallback(gCtx, client, ipv4Providers, "IPv4"); ip != "" &&
+				strings.Contains(ip, ".") {
 				ips.IPv4 = []string{ip}
 			}
 			return nil
@@ -173,7 +152,8 @@ func ResolvePublicIP(ctx context.Context) (IPs, error) {
 
 	if len(ips.IPv6) == 0 {
 		g.Go(func() error {
-			if ip := fetchIPWithFallback(gCtx, client, ipv6Providers, "IPv6"); ip != "" && strings.Contains(ip, ":") {
+			if ip := fetchIPWithFallback(gCtx, client, ipv6Providers, "IPv6"); ip != "" &&
+				strings.Contains(ip, ":") {
 				ips.IPv6 = []string{ip}
 			}
 			return nil
@@ -191,7 +171,12 @@ func ResolvePublicIP(ctx context.Context) (IPs, error) {
 
 // fetchIPWithFallback tries each provider URL in order and returns the first valid IP.
 // If all providers fail, it logs a single summary instead of per-provider noise.
-func fetchIPWithFallback(ctx context.Context, client *http.Client, providers []string, family string) string {
+func fetchIPWithFallback(
+	ctx context.Context,
+	client *http.Client,
+	providers []string,
+	family string,
+) string {
 	for _, url := range providers {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
@@ -212,4 +197,3 @@ func fetchIPWithFallback(ctx context.Context, client *http.Client, providers []s
 	slog.Debug("No public IP resolved, connectivity may not be available", "family", family)
 	return ""
 }
-

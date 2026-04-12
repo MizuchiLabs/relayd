@@ -102,7 +102,7 @@ func syncAll(
 
 	_ = resolveGroup.Wait()
 
-	slog.Info(
+	slog.Debug(
 		"Syncing",
 		"hosts",
 		len(hosts),
