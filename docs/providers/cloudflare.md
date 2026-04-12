@@ -12,4 +12,4 @@ RELAYD_PROVIDER_CLOUDFLARE_PROXIED=true # Optional, defaults to true
 
 ## Features
 
-- **Proxied**: By default, `relayd` enables the Cloudflare Proxy (orange cloud) for all `A`, `AAAA`, and `CNAME` records it manages. This hides your origin IP address. To disable this and create unproxied DNS records, set the environment variable `RELAYD_PROVIDER_<NAME>_PROXIED=false`.
+- **Proxied (default: enabled)**: By default, `relayd` enables the Cloudflare Proxy (orange cloud) for all `A`, `AAAA`, and `CNAME` records it manages. This is a **security default** — Cloudflare's proxy hides your origin server's IP address from DNS lookups, protecting it from direct attacks. To disable proxying and expose your origin IP directly in DNS records, explicitly set `RELAYD_PROVIDER_<NAME>_PROXIED=false`.

@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -181,15 +180,6 @@ func (c *Client) createRecord(ctx context.Context, policy DNSPolicy) (DNSPolicy,
 		return DNSPolicy{}, err
 	}
 
-	slog.Debug(
-		"creating record",
-		"domain",
-		policy.Domain,
-		"ipv4",
-		policy.IPv4Address,
-		"ipv6",
-		policy.IPv6Address,
-	)
 	url := fmt.Sprintf("%s/sites/%s/dns/policies", c.BaseURL, siteID)
 	body, err := json.Marshal(policy)
 	if err != nil {
@@ -214,15 +204,6 @@ func (c *Client) updateRecord(ctx context.Context, id string, policy DNSPolicy) 
 		return DNSPolicy{}, err
 	}
 
-	slog.Debug(
-		"updating record",
-		"domain",
-		policy.Domain,
-		"ipv4",
-		policy.IPv4Address,
-		"ipv6",
-		policy.IPv6Address,
-	)
 	url := fmt.Sprintf("%s/sites/%s/dns/policies/%s", c.BaseURL, siteID, id)
 	body, err := json.Marshal(policy)
 	if err != nil {
@@ -247,7 +228,6 @@ func (c *Client) deleteRecord(ctx context.Context, id string) error {
 		return err
 	}
 
-	slog.Debug("deleting record", "id", id)
 	url := fmt.Sprintf("%s/sites/%s/dns/policies/%s", c.BaseURL, siteID, id)
 	_, err = c.doRequest(ctx, http.MethodDelete, url, nil)
 	if err != nil {

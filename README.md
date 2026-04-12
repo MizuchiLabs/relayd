@@ -27,6 +27,7 @@ Simply run the container and mount the docker socket:
 services:
   relayd:
     image: ghcr.io/mizuchilabs/relayd:latest
+    network_mode: host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
@@ -34,6 +35,53 @@ services:
       - RELAYD_PROVIDER_CLOUDFLARE_TOKEN=your-api-token
       - RELAYD_PROVIDER_CLOUDFLARE_ZONES=example.com
 ```
+
+### Networking
+
+Relayd auto-detects your server's local and public IP addresses to create DNS records. **Public IPs** are resolved via external services and work in any networking mode. **Local IPs** are discovered from the host's network interfaces, which requires additional configuration depending on your setup.
+
+#### Docker Compose
+
+Use `network_mode: host` to give relayd direct access to the host's network interfaces:
+
+```yaml
+services:
+  relayd:
+    image: ghcr.io/mizuchilabs/relayd:latest
+    network_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - RELAYD_PROVIDER_CLOUDFLARE_TYPE=cloudflare
+      - RELAYD_PROVIDER_CLOUDFLARE_TOKEN=your-api-token
+      - RELAYD_PROVIDER_CLOUDFLARE_ZONES=example.com
+```
+
+#### Docker Swarm
+
+Swarm does not support `network_mode: host`. You **must** either use the network mode host or set the local IP overrides manually:
+
+```yaml
+services:
+  relayd:
+    image: ghcr.io/mizuchilabs/relayd:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - host
+    environment:
+      - RELAYD_PROVIDER_CLOUDFLARE_TYPE=cloudflare
+      - RELAYD_PROVIDER_CLOUDFLARE_TOKEN=your-api-token
+      - RELAYD_PROVIDER_CLOUDFLARE_ZONES=example.com
+      - RELAYD_LOCAL_OVERRIDE_IPV4=1.2.3.4 # If not using networks: host
+
+networks:
+  host:
+    name: host
+    external: true
+```
+
+> **Note:** Without host networking or manual overrides, relayd will detect the container's internal IP (e.g. `172.17.0.2`), which is not routable and will produce incorrect DNS records for local-scoped providers. If you only use public-scoped providers (the default), this does not apply.
 
 ### Adding domains to your containers
 
