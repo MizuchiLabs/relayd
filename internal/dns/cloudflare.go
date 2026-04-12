@@ -17,32 +17,32 @@ type proxiedClient struct {
 }
 
 func (c *proxiedClient) Do(req *http.Request) (*http.Response, error) {
-	if req.Method == http.MethodPost || req.Method == http.MethodPut ||
-		req.Method == http.MethodPatch {
-		if req.Body != nil {
-			bodyBytes, err := io.ReadAll(req.Body)
-			if err == nil {
-				var data map[string]any
-				if err := json.Unmarshal(bodyBytes, &data); err == nil {
-					if t, ok := data["type"].(string); ok &&
-						(t == "A" || t == "AAAA" || t == "CNAME") {
-						data["proxied"] = true
-						if newBody, err := json.Marshal(data); err == nil {
-							req.Body = io.NopCloser(bytes.NewReader(newBody))
-							req.ContentLength = int64(len(newBody))
-						} else {
-							req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-						}
-					} else {
-						req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-					}
-				} else {
-					req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-				}
+	// Skip if no body or wrong method
+	if req.Body == nil ||
+		(req.Method != http.MethodPost && req.Method != http.MethodPut && req.Method != http.MethodPatch) {
+		return c.client.Do(req)
+	}
+
+	bodyBytes, err := io.ReadAll(req.Body)
+	if err != nil {
+		return c.client.Do(req) // Proceed normally if we can't read it
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(bodyBytes, &data); err == nil {
+		if t, ok := data["type"].(string); ok && (t == "A" || t == "AAAA" || t == "CNAME") {
+			data["proxied"] = true
+
+			if newBody, err := json.Marshal(data); err == nil {
+				req.Body = io.NopCloser(bytes.NewReader(newBody))
+				req.ContentLength = int64(len(newBody))
+				return c.client.Do(req)
 			}
 		}
 	}
 
+	// Fallback: restore original body if parsing or marshaling failed
+	req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	return c.client.Do(req) // #nosec G704 - host validated
 }
 

@@ -175,10 +175,6 @@ func Apply(
 		return nil
 	}
 
-	if len(changes.Create) == 0 && len(changes.Delete) == 0 {
-		return nil
-	}
-
 	slog.Info("Applying changes",
 		"add", len(changes.Create), "delete", len(changes.Delete),
 		"provider", provider.Name(), "zone", zone,

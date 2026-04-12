@@ -38,21 +38,40 @@ func Run(ctx context.Context, cfg config.Config) error {
 
 	var debounceTimer *time.Timer
 	var debounce <-chan time.Time
-	const debounceDuration = 2 * time.Second
+	const debounceDuration = 3 * time.Second
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case err := <-watchErrs:
-			slog.Error("Docker watcher encountered an error", "error", err)
-			return err
+			slog.Warn("Docker connection lost, attempting to reconnect...", "error", err)
+			time.Sleep(5 * time.Second)
+
+			// Close old source, create new one
+			_ = source.Close()
+			newSource, err := discovery.NewDockerSource()
+			if err != nil {
+				slog.Error("Failed to reconnect to Docker", "error", err)
+			} else {
+				source = newSource
+				events, watchErrs = source.Watch(ctx)
+				slog.Info("Successfully reconnected to Docker event stream")
+			}
+
 		case ev := <-events:
 			slog.Debug("Docker event received", "action", ev.Action)
 			if debounceTimer == nil {
 				debounceTimer = time.NewTimer(debounceDuration)
 				debounce = debounceTimer.C
 			} else {
+				// Safely stop and drain the timer before resetting
+				if !debounceTimer.Stop() {
+					select {
+					case <-debounceTimer.C:
+					default:
+					}
+				}
 				debounceTimer.Reset(debounceDuration)
 			}
 		case <-debounce:
