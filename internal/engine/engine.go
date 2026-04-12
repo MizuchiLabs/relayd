@@ -39,7 +39,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 
 	var debounceTimer *time.Timer
 	var debounce <-chan time.Time
-	debounceDuration := 2 * time.Second
+	const debounceDuration = 2 * time.Second
 
 	for {
 		select {
@@ -57,7 +57,6 @@ func Run(ctx context.Context, cfg config.Config) error {
 				debounceTimer.Reset(debounceDuration)
 			}
 		case <-debounce:
-			debounceTimer.Stop()
 			debounceTimer = nil
 			debounce = nil
 			if err := syncAll(ctx, providers, source); err != nil {

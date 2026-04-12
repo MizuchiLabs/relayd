@@ -3,6 +3,7 @@ package reconcile
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -105,6 +106,7 @@ func Apply(
 	// Calculate Creates
 	for key, r := range desiredMap {
 		if _, exists := existingMap[key]; !exists {
+			slog.Debug("Record to create", "type", r.Type, "name", r.Name, "value", r.Value)
 			changes.Create = append(changes.Create, r)
 		}
 	}
@@ -143,12 +145,18 @@ func Apply(
 				shouldDelete = true
 			}
 		} else {
-			if _, isDesired := desired[hostToCheck]; isDesired {
+			// Force mode: no TXT ownership records, so delete any A/AAAA record
+			// in this zone that is no longer in the desired set.
+			if _, isDesired := desired[hostToCheck]; !isDesired {
 				shouldDelete = true
 			}
 		}
 
 		if shouldDelete {
+			slog.Debug("Record to delete",
+				"type", r.Type, "name", r.Name, "value", r.Value,
+				"host", hostToCheck, "force", provider.Force(),
+			)
 			changes.Delete = append(changes.Delete, r)
 		}
 	}
@@ -157,6 +165,9 @@ func Apply(
 		return nil
 	}
 
+	slog.Info(fmt.Sprintf("Applying %d creates, %d deletes", len(changes.Create), len(changes.Delete)),
+		"provider", provider.Name(), "zone", zone,
+	)
 	return provider.Apply(ctx, zone, changes)
 }
 
@@ -174,12 +185,12 @@ func desiredSet(hosts []string, zone string) map[string]struct{} {
 
 func managedSet(records []dns.Record, zone string) map[string]struct{} {
 	out := make(map[string]struct{})
-	zDot := util.WithDot(zone)
+	zDot := util.WithDot(strings.ToLower(zone))
 
 	for _, r := range records {
 		val := strings.Trim(r.Value, "\"")
 		if r.Type == "TXT" && val == "relayd" {
-			name := strings.Trim(r.Name, ".")
+			name := strings.Trim(strings.ToLower(r.Name), ".")
 			if name == txtPrefix {
 				out[strings.TrimSuffix(zDot, ".")] = struct{}{}
 			} else if after, ok := strings.CutPrefix(name, txtPrefix+"."); ok {

@@ -3,6 +3,7 @@ package discovery
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -33,7 +34,7 @@ func (s *DockerSource) Close() error {
 }
 
 func (s *DockerSource) ListHostnames(ctx context.Context) (map[string][]string, error) {
-	containers, err := s.client.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := s.client.ContainerList(ctx, container.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -99,10 +100,13 @@ func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
 			case err, ok := <-errs:
 				if ok {
 					errOut <- err
+				} else {
+					errOut <- fmt.Errorf("docker event stream closed unexpectedly")
 				}
 				return
 			case msg, ok := <-msgs:
 				if !ok {
+					errOut <- fmt.Errorf("docker event stream closed unexpectedly")
 					return
 				}
 				if isRelevantAction(string(msg.Action)) {
