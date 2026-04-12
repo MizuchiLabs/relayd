@@ -268,13 +268,18 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 		domain = domain + "." + zone
 	}
 
+	ttl := int32(r.TTL.Seconds())
+	if ttl <= 0 {
+		ttl = 300
+	}
+
 	switch r.Type {
 	case "A":
 		return DNSPolicy{
 			Type:        "A_RECORD",
 			Domain:      domain,
 			IPv4Address: r.Data,
-			TTLSeconds:  0,
+			TTLSeconds:  ttl,
 			Enabled:     true,
 		}, nil
 	case "AAAA":
@@ -282,7 +287,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 			Type:        "AAAA_RECORD",
 			Domain:      domain,
 			IPv6Address: r.Data,
-			TTLSeconds:  0,
+			TTLSeconds:  ttl,
 			Enabled:     true,
 		}, nil
 	case "CNAME":
@@ -290,7 +295,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 			Type:         "CNAME_RECORD",
 			Domain:       domain,
 			TargetDomain: r.Data,
-			TTLSeconds:   0,
+			TTLSeconds:   ttl,
 			Enabled:      true,
 		}, nil
 	case "TXT":
@@ -311,7 +316,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 			Domain:           domain,
 			MailServerDomain: target,
 			Priority:         priority,
-			TTLSeconds:       0,
+			TTLSeconds:       ttl,
 			Enabled:          true,
 		}, nil
 	case "SRV":

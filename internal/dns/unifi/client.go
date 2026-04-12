@@ -27,7 +27,7 @@ type DNSPolicy struct {
 	Type             string `json:"type,omitempty"`
 	Domain           string `json:"domain"`
 	Enabled          bool   `json:"enabled"`
-	TTLSeconds       int32  `json:"ttlSeconds"`
+	TTLSeconds       int32  `json:"ttlSeconds,omitempty"`
 	IPv4Address      string `json:"ipv4Address,omitempty"`
 	IPv6Address      string `json:"ipv6Address,omitempty"`
 	TargetDomain     string `json:"targetDomain,omitempty"`
