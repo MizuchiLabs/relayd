@@ -164,7 +164,7 @@ func syncAll(
 			}
 
 			for _, zone := range p.Zones() {
-				if err := reconcile.Apply(gCtx, p, cfg.InstanceID, zone, providerHosts, ips); err != nil {
+				if err := reconcile.Apply(gCtx, p, cfg.Instance, zone, providerHosts, ips); err != nil {
 					slog.Error("Sync failed", "provider", p.Name(), "zone", zone, "error", err)
 				}
 			}

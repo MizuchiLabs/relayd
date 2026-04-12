@@ -69,13 +69,13 @@ For manual domain assignments, simply attach the 'relayd.hosts' label to your co
 				Sources: cli.EnvVars("RELAYD_INTERVAL"),
 			},
 			&cli.StringFlag{
-				Name:    "instance-id",
-				Aliases: []string{"instance"},
+				Name:    "instance",
 				Usage:   "Unique identifier for the relayd instance (e.g. 'my-instance')",
-				Sources: cli.EnvVars("RELAYD_INSTANCE_ID"),
+				Sources: cli.EnvVars("RELAYD_INSTANCE"),
 			},
 			&cli.StringFlag{
 				Name:    "ip-family",
+				Aliases: []string{"f"},
 				Usage:   "IP family to synchronize: ipv4, ipv6, or dual",
 				Value:   "ipv4",
 				Sources: cli.EnvVars("RELAYD_IP_FAMILY"),

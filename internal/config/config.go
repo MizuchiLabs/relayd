@@ -13,10 +13,10 @@ import (
 
 // Config holds the configuration for relayd.
 type Config struct {
-	InstanceID string
-	Interval   time.Duration
-	IPFamily   string
-	Providers  []Provider
+	Instance  string
+	Interval  time.Duration
+	IPFamily  string
+	Providers []Provider
 }
 
 // Provider holds the configuration for a DNS provider.
@@ -32,16 +32,16 @@ type Provider struct {
 
 func New(cmd *cli.Command) Config {
 	cfg := Config{
-		InstanceID: cmd.String("instance-id"),
-		Interval:   cmd.Duration("interval"),
-		IPFamily:   cmd.String("ip-family"),
+		Instance: cmd.String("instance"),
+		Interval: cmd.Duration("interval"),
+		IPFamily: cmd.String("ip-family"),
 	}
-	if cfg.InstanceID == "" {
+	if cfg.Instance == "" {
 		hostname, err := os.Hostname()
 		if err == nil && hostname != "" {
-			cfg.InstanceID = hostname
+			cfg.Instance = hostname
 		} else {
-			cfg.InstanceID = "default"
+			cfg.Instance = "default"
 		}
 	}
 
