@@ -50,7 +50,6 @@ func Apply(
 	}
 
 	var changes dns.ChangeSet
-
 	var desiredRecords []dns.Record
 
 	for fqdn := range desired {

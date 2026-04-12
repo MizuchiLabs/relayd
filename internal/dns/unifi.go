@@ -2,6 +2,7 @@ package dns
 
 import (
 	"os"
+	"strings"
 
 	"github.com/mizuchilabs/relayd/internal/config"
 	"github.com/mizuchilabs/relayd/internal/dns/unifi"
@@ -9,14 +10,19 @@ import (
 
 // NewUnifiProvider creates a new UniFi DNS provider wrapped for relayd.
 func NewUnifiProvider(cfg config.Provider) Provider {
-	siteID := os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_SITE_ID")
-	if siteID == "" {
-		siteID = "default"
+	site := os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_SITE")
+	if site == "" {
+		site = "default"
+	}
+
+	baseURL := cfg.URL
+	if !strings.HasSuffix(baseURL, "/proxy/network/integration/v1") {
+		baseURL = strings.TrimRight(baseURL, "/") + "/proxy/network/integration/v1"
 	}
 
 	return newWrapper(cfg, &unifi.Provider{
-		Server: cfg.URL,
+		Server: baseURL,
 		Token:  cfg.Token,
-		SiteID: siteID,
+		Site:   site,
 	})
 }

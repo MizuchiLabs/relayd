@@ -49,7 +49,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 			slog.Error("Docker watcher encountered an error", "error", err)
 			return err
 		case ev := <-events:
-			slog.Debug("Docker event received", "action", ev.Action, "id", ev.ID)
+			slog.Debug("Docker event received", "action", ev.Action)
 			if debounceTimer == nil {
 				debounceTimer = time.NewTimer(debounceDuration)
 				debounce = debounceTimer.C
@@ -60,12 +60,10 @@ func Run(ctx context.Context, cfg config.Config) error {
 			debounceTimer.Stop()
 			debounceTimer = nil
 			debounce = nil
-			slog.Debug("Debounced Docker events, triggering sync")
 			if err := syncAll(ctx, providers, source); err != nil {
 				slog.Error("Event-triggered sync failed", "error", err)
 			}
 		case <-ticker.C:
-			slog.Debug("Background sync triggered")
 			if err := syncAll(ctx, providers, source); err != nil {
 				slog.Error("Background sync failed", "error", err)
 			}

@@ -14,12 +14,12 @@ type Provider struct {
 	client *Client
 	Server string `json:"server,omitempty"`
 	Token  string `json:"token,omitempty"`
-	SiteID string `json:"site_id,omitempty"`
+	Site   string `json:"site,omitempty"`
 }
 
 func (p *Provider) getClient() *Client {
 	if p.client == nil {
-		p.client = &Client{BaseURL: p.Server, Token: p.Token, SiteID: p.SiteID}
+		p.client = &Client{BaseURL: p.Server, Token: p.Token, Site: p.Site}
 	}
 	return p.client
 }
@@ -94,7 +94,7 @@ func (p *Provider) SetRecords(
 		// Find existing
 		var existingID string
 		for _, e := range existing {
-			if e.Domain == pol.Domain && e.RecordType == pol.RecordType {
+			if e.Domain == pol.Domain && e.Type == pol.Type {
 				existingID = e.ID
 				break
 			}
@@ -140,7 +140,7 @@ func (p *Provider) DeleteRecords(
 
 		var existingID string
 		for _, e := range existing {
-			if e.Domain == pol.Domain && e.RecordType == pol.RecordType {
+			if e.Domain == pol.Domain && e.Type == pol.Type {
 				existingID = e.ID
 				break
 			}
@@ -172,7 +172,7 @@ func policyToLibdns(policy DNSPolicy, zone string) (libdns.Record, error) {
 		TTL:  ttl,
 	}
 
-	switch policy.RecordType {
+	switch policy.Type {
 	case "A_RECORD":
 		rr.Type = "A"
 		ip, _ := netip.ParseAddr(policy.IPv4Address)
@@ -213,7 +213,7 @@ func policyToLibdns(policy DNSPolicy, zone string) (libdns.Record, error) {
 			nameSrv,
 		)
 	default:
-		return nil, fmt.Errorf("unsupported record type: %s", policy.RecordType)
+		return nil, fmt.Errorf("unsupported record type: %s", policy.Type)
 	}
 
 	// For compatibility with libdns specific types
@@ -238,7 +238,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 	switch r.Type {
 	case "A":
 		return DNSPolicy{
-			RecordType:  "A_RECORD",
+			Type:        "A_RECORD",
 			Domain:      domain,
 			IPv4Address: r.Data,
 			TTLSeconds:  ttl,
@@ -246,7 +246,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 		}, nil
 	case "AAAA":
 		return DNSPolicy{
-			RecordType:  "AAAA_RECORD",
+			Type:        "AAAA_RECORD",
 			Domain:      domain,
 			IPv6Address: r.Data,
 			TTLSeconds:  ttl,
@@ -254,7 +254,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 		}, nil
 	case "CNAME":
 		return DNSPolicy{
-			RecordType:   "CNAME_RECORD",
+			Type:         "CNAME_RECORD",
 			Domain:       domain,
 			TargetDomain: r.Data,
 			TTLSeconds:   ttl,
@@ -262,7 +262,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 		}, nil
 	case "TXT":
 		return DNSPolicy{
-			RecordType: "TXT_RECORD",
+			Type:       "TXT_RECORD",
 			Domain:     domain,
 			Text:       r.Data,
 			TTLSeconds: ttl,
@@ -275,7 +275,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 		_, _ = fmt.Sscanf(r.Data, "%d %s", &priority, &target)
 
 		return DNSPolicy{
-			RecordType:       "MX_RECORD",
+			Type:             "MX_RECORD",
 			Domain:           domain,
 			MailServerDomain: target,
 			Priority:         priority,
@@ -305,7 +305,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 		}
 
 		return DNSPolicy{
-			RecordType:   "SRV_RECORD",
+			Type:         "SRV_RECORD",
 			Domain:       name,
 			ServerDomain: target,
 			Service:      strings.TrimPrefix(parts[0], "_"),

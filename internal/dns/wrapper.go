@@ -72,17 +72,17 @@ func (w *wrapper) Records(ctx context.Context, zone string) ([]Record, error) {
 }
 
 func (w *wrapper) Apply(ctx context.Context, zone string, changes ChangeSet) error {
-	create := toLibDNS(changes.Create)
-	update := toLibDNS(changes.Update)
+	createSet := toLibDNS(changes.Create)
+	updateSet := toLibDNS(changes.Update)
 	deleteSet := toLibDNS(changes.Delete)
 
-	if len(create) > 0 {
-		if _, err := w.client.AppendRecords(ctx, zone, create); err != nil {
+	if len(createSet) > 0 {
+		if _, err := w.client.AppendRecords(ctx, zone, createSet); err != nil {
 			return err
 		}
 	}
-	if len(update) > 0 {
-		if _, err := w.client.SetRecords(ctx, zone, update); err != nil {
+	if len(updateSet) > 0 {
+		if _, err := w.client.SetRecords(ctx, zone, updateSet); err != nil {
 			return err
 		}
 	}

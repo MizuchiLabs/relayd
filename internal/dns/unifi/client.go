@@ -6,28 +6,29 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 )
 
 type Client struct {
-	BaseURL string
-	Token   string
-	SiteID  string
-
+	BaseURL        string
+	Token          string
+	Site           string
 	resolvedSiteID string
 	client         *http.Client
 }
 
 type DNSPolicy struct {
-	ID               string `json:"_id,omitempty"`
-	RecordType       string `json:"recordType,omitempty"`
+	ID               string `json:"id,omitempty"`
+	Type             string `json:"type,omitempty"`
 	Domain           string `json:"domain"`
 	Enabled          bool   `json:"enabled"`
-	TTLSeconds       int32  `json:"ttlSeconds,omitempty"`
+	TTLSeconds       int32  `json:"ttlSeconds"`
 	IPv4Address      string `json:"ipv4Address,omitempty"`
 	IPv6Address      string `json:"ipv6Address,omitempty"`
 	TargetDomain     string `json:"targetDomain,omitempty"`
@@ -48,9 +49,9 @@ type listResponse struct {
 
 type sitesResponse struct {
 	Data []struct {
-		ID   string `json:"_id"`
-		Name string `json:"name"`
-		Desc string `json:"desc"`
+		ID                string `json:"id"`
+		Name              string `json:"name"`
+		InternalReference string `json:"internalReference"`
 	} `json:"data"`
 }
 
@@ -116,18 +117,21 @@ func (c *Client) resolveSiteID(ctx context.Context) (string, error) {
 	}
 
 	for _, site := range sr.Data {
-		if site.Name == c.SiteID || site.ID == c.SiteID || site.Desc == c.SiteID {
+		if site.Name == c.Site || site.ID == c.Site || site.InternalReference == c.Site {
 			c.resolvedSiteID = site.ID
 			return c.resolvedSiteID, nil
 		}
 	}
-	return "", fmt.Errorf("site '%s' not found", c.SiteID)
+	return "", fmt.Errorf("site '%s' not found", c.Site)
 }
 
 func (c *Client) getRecords(ctx context.Context, zone string) ([]DNSPolicy, error) {
 	siteID, err := c.resolveSiteID(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if siteID == "" {
+		return nil, errors.New("site ID not found")
 	}
 
 	var all []DNSPolicy
@@ -177,6 +181,15 @@ func (c *Client) createRecord(ctx context.Context, policy DNSPolicy) (DNSPolicy,
 		return DNSPolicy{}, err
 	}
 
+	slog.Debug(
+		"creating record",
+		"domain",
+		policy.Domain,
+		"ipv4",
+		policy.IPv4Address,
+		"ipv6",
+		policy.IPv6Address,
+	)
 	url := fmt.Sprintf("%s/sites/%s/dns/policies", c.BaseURL, siteID)
 	body, err := json.Marshal(policy)
 	if err != nil {
@@ -201,6 +214,15 @@ func (c *Client) updateRecord(ctx context.Context, id string, policy DNSPolicy) 
 		return DNSPolicy{}, err
 	}
 
+	slog.Debug(
+		"updating record",
+		"domain",
+		policy.Domain,
+		"ipv4",
+		policy.IPv4Address,
+		"ipv6",
+		policy.IPv6Address,
+	)
 	url := fmt.Sprintf("%s/sites/%s/dns/policies/%s", c.BaseURL, siteID, id)
 	body, err := json.Marshal(policy)
 	if err != nil {
@@ -225,6 +247,7 @@ func (c *Client) deleteRecord(ctx context.Context, id string) error {
 		return err
 	}
 
+	slog.Debug("deleting record", "id", id)
 	url := fmt.Sprintf("%s/sites/%s/dns/policies/%s", c.BaseURL, siteID, id)
 	_, err = c.doRequest(ctx, http.MethodDelete, url, nil)
 	if err != nil {
