@@ -8,16 +8,14 @@
 
 # Relayd
 
-`relayd` is a lightweight "set and forget" external DNS synchronization agent for Docker. It seamlessly updates DNS records (A, AAAA, and TXT ownership records) across various providers based on Docker container labels.
-
-It supports dual-stack IPv4/IPv6 out of the box, handles seamless resolution of local (LAN) and public (WAN) interface IPs, and supports multiple DNS providers like Cloudflare, DigitalOcean, Route53, PowerDNS, Pi-hole, UniFi, and standard RFC2136.
+`relayd` is a lightweight, "set and forget" external DNS synchronization agent for Docker. It seamlessly updates DNS records (A, AAAA, and TXT ownership records) across various providers based on your Docker container labels.
 
 ## Features
 
-- **Docker Label Discovery**: Automatically extracts hostnames from `relayd.hosts` and Traefik `.rule` labels.
+- **Docker Native**: Automatically extracts hostnames from `relayd.hosts` and Traefik `.rule` labels.
 - **Dual-Stack Support**: Synchronizes both `A` (IPv4) and `AAAA` (IPv6) records simultaneously.
-- **Safe Ownership**: Uses `TXT` records to track ownership, preventing it from overwriting domains it doesn't own (can be bypassed using provider-specific force option).
-- **Multi-Provider**: Sync to Cloudflare for public domains while simultaneously syncing to PowerDNS for local domains.
+- **Safe Ownership**: Uses specific `TXT` records to track ownership, guaranteeing it will never overwrite or delete domains it doesn't own.
+- **Multi-Provider**: Sync your public domains to Cloudflare, while simultaneously syncing your internal/local domains to Pi-hole, UniFi, or PowerDNS.
 
 ## Usage
 
@@ -92,6 +90,29 @@ services:
       - relayd.hosts=local.example.com
       - relayd.providers=local,cloudflare
 ```
+
+## 🏗️ Architecture & Edge Cases
+
+To prevent disaster, `relayd` uses a **Safe Ownership** model. Whenever it creates an `A` or `AAAA` record, it creates a companion `TXT` record (e.g., `relayd.yoursubdomain="managed-by=relayd-yourhostname"`). `relayd` will **never** delete or modify a DNS record unless it sees its exact matching TXT record.
+
+### High Availability & Multiple Instances (Split-Brain)
+
+If you run `relayd` on two entirely separate Docker hosts (Host A and Host B) that point to the same DNS Zone, they will natively ignore each other's records.
+However, if you want Host A and Host B to act as a **High Availability cluster** managing the _same_ pool of records, they need to share an identity so they don't fight over ownership.
+
+- **The Fix:** Set the `RELAYD_INSTANCE_ID` environment variable to the exact same string (e.g., `my-ha-cluster`) on all instances.
+
+### Adopting Existing Domains (The Manual Record Trap)
+
+If you manually created a DNS record in your provider's Web UI (e.g., UniFi) and then tell `relayd` to manage that same domain, `relayd` will skip it because it doesn't see a companion `TXT` record indicating ownership.
+
+- **The Fix:** To transfer ownership to `relayd`, simply delete the manually created record from your DNS provider's UI. Within seconds, `relayd` will see the gap, recreate the record via the API, and officially take ownership of it.
+
+### Strict API Providers (UniFi / Pi-Hole)
+
+Some providers have highly restrictive APIs (e.g., UniFi does not allow custom TTLs, Pi-hole does not support TXT records natively). `relayd` automatically handles these internal quirks.
+
+- _Note for Pi-Hole:_ Because Pi-Hole cannot store `TXT` ownership records, its provider profile operates in **Force Mode** by default.
 
 ## Configuration
 
