@@ -140,7 +140,8 @@ func (p *Provider) DeleteRecords(
 
 		var existingID string
 		for _, e := range existing {
-			if e.Domain == pol.Domain && e.Type == pol.Type {
+			// Now we check that the actual values match, not just the name/type
+			if isExactMatch(e, pol) {
 				existingID = e.ID
 				break
 			}
@@ -318,5 +319,36 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 		}, nil
 	default:
 		return DNSPolicy{}, fmt.Errorf("unsupported record type: %s", r.Type)
+	}
+}
+
+// isExactMatch checks if two DNSPolicy records represent the exact same DNS entry
+// (ignoring ID, TTL, Enabled flags, etc.).
+func isExactMatch(existing, target DNSPolicy) bool {
+	if existing.Domain != target.Domain || existing.Type != target.Type {
+		return false
+	}
+
+	switch target.Type {
+	case "A_RECORD":
+		return existing.IPv4Address == target.IPv4Address
+	case "AAAA_RECORD":
+		return existing.IPv6Address == target.IPv6Address
+	case "CNAME_RECORD":
+		return existing.TargetDomain == target.TargetDomain
+	case "TXT_RECORD":
+		// Note: Depending on the UniFi API, it might return TXT strings wrapped in double quotes.
+		// If so, you may need to compare them like: strings.Trim(existing.Text, `"`) == strings.Trim(target.Text, `"`)
+		return existing.Text == target.Text
+	case "MX_RECORD":
+		return existing.MailServerDomain == target.MailServerDomain &&
+			existing.Priority == target.Priority
+	case "SRV_RECORD":
+		return existing.ServerDomain == target.ServerDomain &&
+			existing.Priority == target.Priority &&
+			existing.Weight == target.Weight &&
+			existing.Port == target.Port
+	default:
+		return false
 	}
 }
