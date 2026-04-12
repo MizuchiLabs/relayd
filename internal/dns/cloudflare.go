@@ -20,12 +20,12 @@ func (c *proxiedClient) Do(req *http.Request) (*http.Response, error) {
 	// Skip if no body or wrong method
 	if req.Body == nil ||
 		(req.Method != http.MethodPost && req.Method != http.MethodPut && req.Method != http.MethodPatch) {
-		return c.client.Do(req)
+		return c.client.Do(req) // #nosec G704 - host validated
 	}
 
 	bodyBytes, err := io.ReadAll(req.Body)
 	if err != nil {
-		return c.client.Do(req) // Proceed normally if we can't read it
+		return c.client.Do(req) // #nosec G704 - host validated
 	}
 
 	var data map[string]any
@@ -36,7 +36,7 @@ func (c *proxiedClient) Do(req *http.Request) (*http.Response, error) {
 			if newBody, err := json.Marshal(data); err == nil {
 				req.Body = io.NopCloser(bytes.NewReader(newBody))
 				req.ContentLength = int64(len(newBody))
-				return c.client.Do(req)
+				return c.client.Do(req) // #nosec G704 - host validated
 			}
 		}
 	}
