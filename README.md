@@ -91,7 +91,7 @@ services:
       - relayd.providers=local,cloudflare
 ```
 
-## 🏗️ Architecture & Edge Cases
+## Architecture & Edge Cases
 
 To prevent disaster, `relayd` uses a **Safe Ownership** model. Whenever it creates an `A` or `AAAA` record, it creates a companion `TXT` record (e.g., `relayd.yoursubdomain="managed-by=relayd-yourhostname"`). `relayd` will **never** delete or modify a DNS record unless it sees its exact matching TXT record.
 
