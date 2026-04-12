@@ -43,9 +43,6 @@ For manual domain assignments, simply attach the 'relayd.hosts' label to your co
 			if _, err := os.Stat("/var/run/docker.sock"); err != nil {
 				slog.Warn("Docker socket not found", "path", "/var/run/docker.sock")
 			}
-			if _, ok := os.LookupEnv("DOCKER_HOST"); !ok {
-				_ = os.Setenv("DOCKER_HOST", "unix:///var/run/docker.sock")
-			}
 			return ctx, nil
 		},
 		DefaultCommand: "start",

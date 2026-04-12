@@ -150,7 +150,7 @@ func (p *Provider) DeleteRecords(
 	var existing []DNSPolicy
 	fetchedExisting := false
 
-	for _, r := range records {
+	for i, r := range records {
 		var existingID string
 
 		if ur, ok := r.(unifiRecord); ok && ur.ID != "" {
@@ -184,6 +184,9 @@ func (p *Provider) DeleteRecords(
 			}
 		}
 		deleted = append(deleted, r)
+		if i < len(records)-1 {
+			time.Sleep(100 * time.Millisecond)
+		}
 	}
 
 	return deleted, nil

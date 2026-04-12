@@ -4,6 +4,8 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -11,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
+	"github.com/mizuchilabs/relayd/internal/util"
 )
 
 type Event struct {
@@ -21,6 +24,8 @@ type Event struct {
 type DockerSource struct {
 	client *client.Client
 }
+
+var hostRuleRegex = regexp.MustCompile(`Host\(([^)]*)\)`)
 
 func NewDockerSource() (*DockerSource, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -37,7 +42,9 @@ func (s *DockerSource) Close() error {
 func (s *DockerSource) ListHostnames(ctx context.Context) (map[string][]string, error) {
 	hosts := make(map[string]map[string]bool)
 
-	containers, err := s.client.ContainerList(ctx, container.ListOptions{})
+	filters := filters.NewArgs()
+	filters.Add("label", "relayd.enable=true")
+	containers, err := s.client.ContainerList(ctx, container.ListOptions{Filters: filters})
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +106,33 @@ func processLabels(labels map[string]string, hosts map[string]map[string]bool) {
 	}
 }
 
+func extractHostnames(labels map[string]string) []string {
+	var hosts []string
+
+	// Manual label
+	if val, ok := labels["relayd.hosts"]; ok {
+		for v := range strings.SplitSeq(val, ",") {
+			if h := util.NormalizeHostname(v); h != "" {
+				hosts = append(hosts, h)
+			}
+		}
+	}
+
+	// Traefik Extract
+	for key, value := range labels {
+		if !strings.HasPrefix(key, "traefik.http.routers.") || !strings.HasSuffix(key, ".rule") {
+			continue
+		}
+		for _, match := range hostRuleRegex.FindAllStringSubmatch(value, -1) {
+			if len(match) > 1 {
+				hosts = append(hosts, util.ParseQuotedValues(match[1])...)
+			}
+		}
+	}
+
+	return hosts
+}
+
 func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
 	args := filters.NewArgs()
 	args.Add("type", "container")
@@ -106,9 +140,20 @@ func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
 
 	msgs, errs := s.client.Events(ctx, events.ListOptions{Filters: args})
 
-	out := make(chan Event)
+	out := make(chan Event, 100)
 	errOut := make(chan error, 1)
 
+	relevantActions := []string{
+		"start",
+		"restart",
+		"die",
+		"stop",
+		"destroy",
+		"rename",
+		"update",
+		"create",
+		"remove",
+	}
 	go func() {
 		defer close(out)
 		defer close(errOut)
@@ -128,7 +173,7 @@ func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
 					errOut <- fmt.Errorf("docker event stream closed unexpectedly")
 					return
 				}
-				if isRelevantAction(string(msg.Action)) {
+				if slices.Contains(relevantActions, string(msg.Action)) {
 					out <- Event{Action: string(msg.Action), ID: msg.Actor.ID}
 				}
 			}
@@ -136,12 +181,4 @@ func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
 	}()
 
 	return out, errOut
-}
-
-func isRelevantAction(action string) bool {
-	switch action {
-	case "start", "restart", "die", "stop", "destroy", "rename", "update", "create", "remove":
-		return true
-	}
-	return false
 }

@@ -58,6 +58,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 		case <-debounce:
 			debounceTimer = nil
 			debounce = nil
+			slog.Debug("Docker event debounced")
 			if err := syncAll(ctx, cfg, providers, source); err != nil {
 				slog.Error("Event-triggered sync failed", "error", err)
 			}

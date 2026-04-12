@@ -105,6 +105,9 @@ func (c *Client) resolveSiteID(ctx context.Context) (string, error) {
 	if c.resolvedSiteID != "" {
 		return c.resolvedSiteID, nil
 	}
+	if c.Site == "" {
+		c.Site = "default"
+	}
 
 	url := fmt.Sprintf("%s/sites", c.BaseURL)
 	resp, err := c.doRequest(ctx, http.MethodGet, url, nil)
