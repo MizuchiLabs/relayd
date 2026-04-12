@@ -8,12 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/client"
 	"github.com/mizuchilabs/relayd/internal/util"
+	"github.com/moby/moby/client"
 )
 
 type Event struct {
@@ -28,7 +24,7 @@ type DockerSource struct {
 var hostRuleRegex = regexp.MustCompile(`Host\(([^)]*)\)`)
 
 func NewDockerSource() (*DockerSource, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -42,21 +38,21 @@ func (s *DockerSource) Close() error {
 func (s *DockerSource) ListHostnames(ctx context.Context) (map[string][]string, error) {
 	hosts := make(map[string]map[string]bool)
 
-	filters := filters.NewArgs()
+	filters := client.Filters{}
 	filters.Add("label", "relayd.enable=true")
-	containers, err := s.client.ContainerList(ctx, container.ListOptions{Filters: filters})
+	containers, err := s.client.ContainerList(ctx, client.ContainerListOptions{Filters: filters})
 	if err != nil {
 		return nil, err
 	}
 
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		processLabels(c.Labels, hosts)
 	}
 
 	// Fetch swarm services (ignoring errors if not a swarm manager)
-	services, err := s.client.ServiceList(ctx, swarm.ServiceListOptions{})
+	services, err := s.client.ServiceList(ctx, client.ServiceListOptions{})
 	if err == nil {
-		for _, svc := range services {
+		for _, svc := range services.Items {
 			// Check both service-level and container-level labels
 			processLabels(svc.Spec.Labels, hosts)
 			if svc.Spec.TaskTemplate.ContainerSpec != nil {
@@ -134,12 +130,11 @@ func extractHostnames(labels map[string]string) []string {
 }
 
 func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
-	args := filters.NewArgs()
+	args := client.Filters{}
 	args.Add("type", "container")
 	args.Add("type", "service")
 
-	msgs, errs := s.client.Events(ctx, events.ListOptions{Filters: args})
-
+	stream := s.client.Events(ctx, client.EventsListOptions{Filters: args})
 	out := make(chan Event, 100)
 	errOut := make(chan error, 1)
 
@@ -161,14 +156,14 @@ func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
 			select {
 			case <-ctx.Done():
 				return
-			case err, ok := <-errs:
+			case err, ok := <-stream.Err:
 				if ok {
 					errOut <- err
 				} else {
 					errOut <- fmt.Errorf("docker event stream closed unexpectedly")
 				}
 				return
-			case msg, ok := <-msgs:
+			case msg, ok := <-stream.Messages:
 				if !ok {
 					errOut <- fmt.Errorf("docker event stream closed unexpectedly")
 					return
