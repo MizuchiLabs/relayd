@@ -348,7 +348,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 			Port:         port,
 			Weight:       weight,
 			Priority:     priority,
-			TTLSeconds:   0,
+			TTLSeconds:   ttl,
 			Enabled:      true,
 		}, nil
 	default:
