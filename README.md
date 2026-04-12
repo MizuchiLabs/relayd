@@ -75,20 +75,11 @@ services:
     labels:
       - relayd.enable=true
       - relayd.hosts=whoami.example.com,test.example.com
-```
-
-If you use **Traefik**, `relayd` automatically parses `Host()` rules, so you don't even need to add the `relayd.hosts` label!
-
-You can also restrict which DNS providers or scopes a container uses by setting the `relayd.providers` label to a comma-separated list of provider names or scopes:
-
-```yaml
-services:
-  whoami:
-    image: traefik/whoami
-    labels:
-      - relayd.enable=true
-      - relayd.hosts=local.example.com
-      - relayd.providers=local,cloudflare
+      # If you are using Traefik, you can also add the following and remove the `relayd.hosts` label:
+      - traefik.enable=true
+      - traefik.http.routers.whoami.rule=Host(`whoami.example.com`)
+      # To restrict which DNS providers or scopes a container uses use the `relayd.providers` label:
+      - relayd.providers=local # or cloudflare, pihole, unifi, powerdns
 ```
 
 ## Architecture & Edge Cases
