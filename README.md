@@ -23,26 +23,10 @@ It supports dual-stack IPv4/IPv6 out of the box, handles seamless resolution of 
 
 Simply run the container and mount the docker socket:
 
-```yaml
-services:
-  relayd:
-    image: ghcr.io/mizuchilabs/relayd:latest
-    network_mode: host
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - RELAYD_PROVIDER_CLOUDFLARE_TYPE=cloudflare
-      - RELAYD_PROVIDER_CLOUDFLARE_TOKEN=your-api-token
-      - RELAYD_PROVIDER_CLOUDFLARE_ZONES=example.com
-```
+### Docker Compose
 
-### Networking
-
-Relayd auto-detects your server's local and public IP addresses to create DNS records. **Public IPs** are resolved via external services and work in any networking mode. **Local IPs** are discovered from the host's network interfaces, which requires additional configuration depending on your setup.
-
-#### Docker Compose
-
-Use `network_mode: host` to give relayd direct access to the host's network interfaces:
+In standard Docker, `relayd` automatically discovers the primary local IP using the OS routing table.
+Use `network_mode: host` to give relayd direct access to the host's network interfaces so it can discover the host's actual LAN IP:
 
 ```yaml
 services:
@@ -57,9 +41,11 @@ services:
       - RELAYD_PROVIDER_CLOUDFLARE_ZONES=example.com
 ```
 
-#### Docker Swarm
+### Docker Swarm
 
-Swarm does not support `network_mode: host`. You **must** either use the network mode host or set the local IP overrides manually:
+`relayd` has **native Docker Swarm support**. Because Swarm's ingress routing mesh automatically routes traffic received on any node to the correct container, you only need to publish **one** IP address for your services.
+
+You should run exactly **one instance** of `relayd` on a manager node. It will automatically detect all swarm services with the `relayd.enable=true` label across the entire cluster and publish its own node's IP.
 
 ```yaml
 services:
@@ -67,21 +53,18 @@ services:
     image: ghcr.io/mizuchilabs/relayd:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - host
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
     environment:
       - RELAYD_PROVIDER_CLOUDFLARE_TYPE=cloudflare
       - RELAYD_PROVIDER_CLOUDFLARE_TOKEN=your-api-token
       - RELAYD_PROVIDER_CLOUDFLARE_ZONES=example.com
-      - RELAYD_LOCAL_OVERRIDE_IPV4=1.2.3.4 # If not using networks: host
-
-networks:
-  host:
-    name: host
-    external: true
 ```
 
-> **Note:** Without host networking or manual overrides, relayd will detect the container's internal IP (e.g. `172.17.0.2`), which is not routable and will produce incorrect DNS records for local-scoped providers. If you only use public-scoped providers (the default), this does not apply.
+> **Note:** Without host networking or manual overrides, relayd will discover its internal container IP. If you are using local-scoped providers and need the actual Host IP, you can configure the `RELAYD_LOCAL_OVERRIDE_IPV4` and `RELAYD_LOCAL_OVERRIDE_IPV6` environment variables manually. For public-scoped providers (the default), `relayd` uses external services to resolve the public IP automatically, so network mode does not matter.
 
 ### Adding domains to your containers
 
@@ -119,6 +102,7 @@ Relayd can be configured entirely via environment variables.
 | Variable                      | Default | Description                                                   |
 | :---------------------------- | :------ | :------------------------------------------------------------ |
 | `RELAYD_INTERVAL`             | `5m`    | Background sync interval (e.g. `5m`, `1h`).                   |
+| `RELAYD_IP_FAMILY`            | `ipv4`  | IP family to synchronize (`ipv4`, `ipv6`, `dual`).            |
 | `RELAYD_LOCAL_OVERRIDE_IPV4`  | _auto_  | Hardcode the local IPv4 address instead of auto-discovering.  |
 | `RELAYD_LOCAL_OVERRIDE_IPV6`  | _auto_  | Hardcode the local IPv6 address instead of auto-discovering.  |
 | `RELAYD_PUBLIC_OVERRIDE_IPV4` | _auto_  | Hardcode the public IPv4 address instead of auto-discovering. |

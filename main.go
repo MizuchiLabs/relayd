@@ -71,6 +71,12 @@ For manual domain assignments, simply attach the 'relayd.hosts' label to your co
 				Sources: cli.EnvVars("RELAYD_INTERVAL"),
 				Usage:   "Time interval for recurring background DNS synchronization (e.g. 5m, 1h)",
 			},
+			&cli.StringFlag{
+				Name:    "ip-family",
+				Value:   "ipv4",
+				Sources: cli.EnvVars("RELAYD_IP_FAMILY"),
+				Usage:   "IP family to synchronize: ipv4, ipv6, or dual",
+			},
 		},
 	}
 

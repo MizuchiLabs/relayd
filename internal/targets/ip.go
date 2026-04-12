@@ -17,12 +17,12 @@ import (
 )
 
 type IPs struct {
-	IPv4 []string
-	IPv6 []string
+	IPv4 string
+	IPv6 string
 }
 
 func (i IPs) HasAny() bool {
-	return len(i.IPv4) > 0 || len(i.IPv6) > 0
+	return i.IPv4 != "" || i.IPv6 != ""
 }
 
 // virtualPrefixes lists interface name prefixes that belong to virtual/container networks
@@ -42,16 +42,59 @@ func isVirtualInterface(name string) bool {
 	return false
 }
 
-func ResolveLocalIP() (IPs, error) {
+func getPreferredIP(network, address string) string {
+	// A dummy connection to find the preferred outbound IP.
+	// It doesn't actually send packets if it's UDP.
+	conn, err := net.Dial(network, address)
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = conn.Close() }()
+
+	if udpAddr, ok := conn.LocalAddr().(*net.UDPAddr); ok {
+		return udpAddr.IP.String()
+	}
+	return ""
+}
+
+func ResolveLocalIP(family string) (IPs, error) {
 	var ips IPs
 
-	if override := os.Getenv("RELAYD_LOCAL_OVERRIDE_IPV4"); override != "" {
-		ips.IPv4 = util.SplitCSV(override)
+	if family == "ipv4" || family == "dual" || family == "" {
+		if override := os.Getenv("RELAYD_LOCAL_OVERRIDE_IPV4"); override != "" {
+			if parts := util.SplitCSV(override); len(parts) > 0 {
+				ips.IPv4 = parts[0]
+			}
+		}
 	}
-	if override := os.Getenv("RELAYD_LOCAL_OVERRIDE_IPV6"); override != "" {
-		ips.IPv6 = util.SplitCSV(override)
+	if family == "ipv6" || family == "dual" {
+		if override := os.Getenv("RELAYD_LOCAL_OVERRIDE_IPV6"); override != "" {
+			if parts := util.SplitCSV(override); len(parts) > 0 {
+				ips.IPv6 = parts[0]
+			}
+		}
 	}
-	if len(ips.IPv4) > 0 || len(ips.IPv6) > 0 {
+
+	if (family == "ipv4" && ips.IPv4 != "") ||
+		(family == "ipv6" && ips.IPv6 != "") ||
+		((family == "dual" || family == "") && ips.IPv4 != "" && ips.IPv6 != "") {
+		return ips, nil
+	}
+
+	if (family == "ipv4" || family == "dual" || family == "") && ips.IPv4 == "" {
+		if ip := getPreferredIP("udp4", "1.1.1.1:53"); ip != "" {
+			ips.IPv4 = ip
+		}
+	}
+	if (family == "ipv6" || family == "dual") && ips.IPv6 == "" {
+		if ip := getPreferredIP("udp6", "[2606:4700:4700::1111]:53"); ip != "" {
+			ips.IPv6 = ip
+		}
+	}
+
+	if (family == "ipv4" && ips.IPv4 != "") ||
+		(family == "ipv6" && ips.IPv6 != "") ||
+		((family == "dual" || family == "") && ips.IPv4 != "" && ips.IPv6 != "") {
 		return ips, nil
 	}
 
@@ -59,9 +102,6 @@ func ResolveLocalIP() (IPs, error) {
 	if err != nil {
 		return ips, fmt.Errorf("failed to list network interfaces: %w", err)
 	}
-
-	seen4 := make(map[string]struct{})
-	seen6 := make(map[string]struct{})
 
 	for _, iface := range ifaces {
 		// Skip loopback, down, and virtual interfaces
@@ -90,18 +130,26 @@ func ResolveLocalIP() (IPs, error) {
 			}
 
 			if ip.To4() != nil {
-				ipStr := ip.String()
-				if _, ok := seen4[ipStr]; !ok {
-					seen4[ipStr] = struct{}{}
-					ips.IPv4 = append(ips.IPv4, ipStr)
+				if (family == "ipv4" || family == "dual" || family == "") && ips.IPv4 == "" {
+					ips.IPv4 = ip.String()
 				}
 			} else if ip.To16() != nil {
-				ipStr := ip.String()
-				if _, ok := seen6[ipStr]; !ok {
-					seen6[ipStr] = struct{}{}
-					ips.IPv6 = append(ips.IPv6, ipStr)
+				if (family == "ipv6" || family == "dual") && ips.IPv6 == "" {
+					ips.IPv6 = ip.String()
 				}
 			}
+
+			if (family == "ipv4" && ips.IPv4 != "") ||
+				(family == "ipv6" && ips.IPv6 != "") ||
+				((family == "dual" || family == "") && ips.IPv4 != "" && ips.IPv6 != "") {
+				break
+			}
+		}
+
+		if (family == "ipv4" && ips.IPv4 != "") ||
+			(family == "ipv6" && ips.IPv6 != "") ||
+			((family == "dual" || family == "") && ips.IPv4 != "" && ips.IPv6 != "") {
+			break
 		}
 	}
 
@@ -123,38 +171,48 @@ var (
 	}
 )
 
-func ResolvePublicIP(ctx context.Context) (IPs, error) {
+func ResolvePublicIP(ctx context.Context, family string) (IPs, error) {
 	var ips IPs
 
-	if override := os.Getenv("RELAYD_PUBLIC_OVERRIDE_IPV4"); override != "" {
-		ips.IPv4 = util.SplitCSV(override)
+	if family == "ipv4" || family == "dual" || family == "" {
+		if override := os.Getenv("RELAYD_PUBLIC_OVERRIDE_IPV4"); override != "" {
+			if parts := util.SplitCSV(override); len(parts) > 0 {
+				ips.IPv4 = parts[0]
+			}
+		}
 	}
-	if override := os.Getenv("RELAYD_PUBLIC_OVERRIDE_IPV6"); override != "" {
-		ips.IPv6 = util.SplitCSV(override)
+	if family == "ipv6" || family == "dual" {
+		if override := os.Getenv("RELAYD_PUBLIC_OVERRIDE_IPV6"); override != "" {
+			if parts := util.SplitCSV(override); len(parts) > 0 {
+				ips.IPv6 = parts[0]
+			}
+		}
 	}
 
-	if len(ips.IPv4) > 0 && len(ips.IPv6) > 0 {
+	if (family == "ipv4" && ips.IPv4 != "") ||
+		(family == "ipv6" && ips.IPv6 != "") ||
+		((family == "dual" || family == "") && ips.IPv4 != "" && ips.IPv6 != "") {
 		return ips, nil
 	}
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	g, gCtx := errgroup.WithContext(ctx)
 
-	if len(ips.IPv4) == 0 {
+	if (family == "ipv4" || family == "dual" || family == "") && ips.IPv4 == "" {
 		g.Go(func() error {
 			if ip := fetchIPWithFallback(gCtx, client, ipv4Providers, "IPv4"); ip != "" &&
 				strings.Contains(ip, ".") {
-				ips.IPv4 = []string{ip}
+				ips.IPv4 = ip
 			}
 			return nil
 		})
 	}
 
-	if len(ips.IPv6) == 0 {
+	if (family == "ipv6" || family == "dual") && ips.IPv6 == "" {
 		g.Go(func() error {
 			if ip := fetchIPWithFallback(gCtx, client, ipv6Providers, "IPv6"); ip != "" &&
 				strings.Contains(ip, ":") {
-				ips.IPv6 = []string{ip}
+				ips.IPv6 = ip
 			}
 			return nil
 		})

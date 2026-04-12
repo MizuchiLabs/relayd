@@ -68,16 +68,16 @@ func Apply(
 
 		rel := libdns.RelativeName(fqdn, util.WithDot(zone))
 
-		for _, ip := range target.IPv4 {
+		if target.IPv4 != "" {
 			desiredRecords = append(
 				desiredRecords,
-				dns.Record{Type: "A", Name: rel, Value: ip},
+				dns.Record{Type: "A", Name: rel, Value: target.IPv4},
 			)
 		}
-		for _, ip := range target.IPv6 {
+		if target.IPv6 != "" {
 			desiredRecords = append(
 				desiredRecords,
-				dns.Record{Type: "AAAA", Name: rel, Value: ip},
+				dns.Record{Type: "AAAA", Name: rel, Value: target.IPv6},
 			)
 		}
 

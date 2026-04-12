@@ -14,6 +14,7 @@ import (
 // Config holds the configuration for relayd.
 type Config struct {
 	Interval  time.Duration
+	IPFamily  string
 	Providers []Provider
 }
 
@@ -31,6 +32,7 @@ type Provider struct {
 func New(cmd *cli.Command) Config {
 	cfg := Config{
 		Interval: cmd.Duration("interval"),
+		IPFamily: cmd.String("ip-family"),
 	}
 
 	// Auto-discover providers by scanning environment variables

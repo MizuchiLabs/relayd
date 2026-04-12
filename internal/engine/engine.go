@@ -4,7 +4,6 @@ package engine
 import (
 	"context"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/mizuchilabs/relayd/internal/config"
@@ -29,7 +28,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 	}
 	defer func() { _ = source.Close() }()
 
-	if err := syncAll(ctx, providers, source); err != nil {
+	if err := syncAll(ctx, cfg, providers, source); err != nil {
 		slog.Error("Initial sync failed", "error", err)
 	}
 
@@ -59,11 +58,11 @@ func Run(ctx context.Context, cfg config.Config) error {
 		case <-debounce:
 			debounceTimer = nil
 			debounce = nil
-			if err := syncAll(ctx, providers, source); err != nil {
+			if err := syncAll(ctx, cfg, providers, source); err != nil {
 				slog.Error("Event-triggered sync failed", "error", err)
 			}
 		case <-ticker.C:
-			if err := syncAll(ctx, providers, source); err != nil {
+			if err := syncAll(ctx, cfg, providers, source); err != nil {
 				slog.Error("Background sync failed", "error", err)
 			}
 		}
@@ -72,6 +71,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 
 func syncAll(
 	ctx context.Context,
+	cfg config.Config,
 	providers []dns.Provider,
 	source *discovery.DockerSource,
 ) error {
@@ -85,7 +85,7 @@ func syncAll(
 	var localIP, publicIP targets.IPs
 
 	resolveGroup.Go(func() error {
-		ips, err := targets.ResolveLocalIP()
+		ips, err := targets.ResolveLocalIP(cfg.IPFamily)
 		if err == nil {
 			localIP = ips
 		}
@@ -93,7 +93,7 @@ func syncAll(
 	})
 
 	resolveGroup.Go(func() error {
-		ips, err := targets.ResolvePublicIP(resolveCtx)
+		ips, err := targets.ResolvePublicIP(resolveCtx, cfg.IPFamily)
 		if err == nil {
 			publicIP = ips
 		}
@@ -107,13 +107,13 @@ func syncAll(
 		"hosts",
 		len(hosts),
 		"local_v4",
-		strings.Join(localIP.IPv4, ","),
+		localIP.IPv4,
 		"local_v6",
-		strings.Join(localIP.IPv6, ","),
+		localIP.IPv6,
 		"public_v4",
-		strings.Join(publicIP.IPv4, ","),
+		publicIP.IPv4,
 		"public_v6",
-		strings.Join(publicIP.IPv6, ","),
+		publicIP.IPv6,
 	)
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -138,8 +138,22 @@ func syncAll(
 			if p.Scope() == "local" {
 				ips = localIP
 			}
+
+			switch cfg.IPFamily {
+			case "ipv4":
+				ips.IPv6 = ""
+			case "ipv6":
+				ips.IPv4 = ""
+			}
+
 			if !ips.HasAny() {
-				slog.Warn("No IP available for scope", "scope", p.Scope())
+				slog.Warn(
+					"No IP available for scope and family",
+					"scope",
+					p.Scope(),
+					"family",
+					cfg.IPFamily,
+				)
 				return nil
 			}
 
