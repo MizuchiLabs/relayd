@@ -58,9 +58,11 @@ func Apply(
 			if _, isManaged := managed[fqdn]; !isManaged {
 				if _, exists := existingHosts[fqdn]; exists {
 					slog.Warn(
-						"Skipping unmanaged host with existing records (no relayd TXT record found)",
+						"Skipping unmanaged host with existing records",
 						"host",
 						fqdn,
+						"provider",
+						provider.Name(),
 					)
 					continue
 				}
