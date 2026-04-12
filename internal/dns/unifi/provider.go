@@ -17,6 +17,15 @@ type Provider struct {
 	Site   string `json:"site,omitempty"`
 }
 
+type unifiRecord struct {
+	libdns.Record
+	ID string
+}
+
+func (u unifiRecord) RR() libdns.RR {
+	return u.Record.RR()
+}
+
 func (p *Provider) getClient() *Client {
 	if p.client == nil {
 		p.client = &Client{BaseURL: p.Server, Token: p.Token, Site: p.Site}
@@ -60,12 +69,12 @@ func (p *Provider) AppendRecords(
 			return added, err
 		}
 
-		_, err = c.createRecord(ctx, pol)
+		created, err := c.createRecord(ctx, pol)
 		if err != nil {
 			return added, err
 		}
 
-		added = append(added, r)
+		added = append(added, unifiRecord{Record: r, ID: created.ID})
 	}
 
 	return added, nil
@@ -80,10 +89,8 @@ func (p *Provider) SetRecords(
 	zoneTrimmed := strings.TrimSuffix(zone, ".")
 	var set []libdns.Record
 
-	existing, err := c.getRecords(ctx, zone)
-	if err != nil {
-		return nil, err
-	}
+	var existing []DNSPolicy
+	fetchedExisting := false
 
 	for _, r := range records {
 		pol, err := libdnsToPolicy(r, zoneTrimmed)
@@ -91,28 +98,41 @@ func (p *Provider) SetRecords(
 			return set, err
 		}
 
-		// Find existing
 		var existingID string
-		for _, e := range existing {
-			if e.Domain == pol.Domain && e.Type == pol.Type {
-				existingID = e.ID
-				break
-			}
-		}
-
-		if existingID != "" {
-			_, err = c.updateRecord(ctx, existingID, pol)
-			if err != nil {
-				return set, err
-			}
+		if ur, ok := r.(unifiRecord); ok && ur.ID != "" {
+			existingID = ur.ID
 		} else {
-			_, err = c.createRecord(ctx, pol)
-			if err != nil {
-				return set, err
+			if !fetchedExisting {
+				existing, err = c.getRecords(ctx, zone)
+				if err != nil {
+					return set, err
+				}
+				fetchedExisting = true
+			}
+			for _, e := range existing {
+				if e.Domain == pol.Domain && e.Type == pol.Type {
+					existingID = e.ID
+					break
+				}
 			}
 		}
 
-		set = append(set, r)
+		var finalID string
+		if existingID != "" {
+			updated, err := c.updateRecord(ctx, existingID, pol)
+			if err != nil {
+				return set, err
+			}
+			finalID = updated.ID
+		} else {
+			created, err := c.createRecord(ctx, pol)
+			if err != nil {
+				return set, err
+			}
+			finalID = created.ID
+		}
+
+		set = append(set, unifiRecord{Record: r, ID: finalID})
 	}
 
 	return set, nil
@@ -127,23 +147,34 @@ func (p *Provider) DeleteRecords(
 	var deleted []libdns.Record
 	zoneTrimmed := strings.TrimSuffix(zone, ".")
 
-	existing, err := c.getRecords(ctx, zone)
-	if err != nil {
-		return nil, err
-	}
+	var existing []DNSPolicy
+	fetchedExisting := false
 
 	for _, r := range records {
-		pol, err := libdnsToPolicy(r, zoneTrimmed)
-		if err != nil {
-			return deleted, err
-		}
-
 		var existingID string
-		for _, e := range existing {
-			// Now we check that the actual values match, not just the name/type
-			if isExactMatch(e, pol) {
-				existingID = e.ID
-				break
+
+		if ur, ok := r.(unifiRecord); ok && ur.ID != "" {
+			existingID = ur.ID
+		} else {
+			if !fetchedExisting {
+				var err error
+				existing, err = c.getRecords(ctx, zone)
+				if err != nil {
+					return deleted, err
+				}
+				fetchedExisting = true
+			}
+
+			pol, err := libdnsToPolicy(r, zoneTrimmed)
+			if err != nil {
+				return deleted, err
+			}
+
+			for _, e := range existing {
+				if isExactMatch(e, pol) {
+					existingID = e.ID
+					break
+				}
 			}
 		}
 
@@ -220,9 +251,9 @@ func policyToLibdns(policy DNSPolicy, zone string) (libdns.Record, error) {
 	// For compatibility with libdns specific types
 	parsed, err := rr.Parse()
 	if err == nil && parsed != nil {
-		return parsed, nil
+		return unifiRecord{Record: parsed, ID: policy.ID}, nil
 	}
-	return rr, nil
+	return unifiRecord{Record: rr, ID: policy.ID}, nil
 }
 
 func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
@@ -270,7 +301,6 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 			Enabled:    true,
 		}, nil
 	case "MX":
-		// Parse from Data (preference target)
 		var priority uint16
 		var target string
 		_, _ = fmt.Sscanf(r.Data, "%d %s", &priority, &target)
@@ -284,12 +314,10 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 			Enabled:          true,
 		}, nil
 	case "SRV":
-		// Parse from Data (priority weight port target)
 		var priority, weight, port uint16
 		var target string
 		_, _ = fmt.Sscanf(r.Data, "%d %d %d %s", &priority, &weight, &port, &target)
 
-		// Parse service and protocol from Name
 		parts := strings.SplitN(r.Name, ".", 3)
 		if len(parts) < 2 {
 			return DNSPolicy{}, fmt.Errorf("invalid SRV name format: %s", r.Name)
@@ -322,8 +350,6 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 	}
 }
 
-// isExactMatch checks if two DNSPolicy records represent the exact same DNS entry
-// (ignoring ID, TTL, Enabled flags, etc.).
 func isExactMatch(existing, target DNSPolicy) bool {
 	if existing.Domain != target.Domain || existing.Type != target.Type {
 		return false
@@ -337,8 +363,6 @@ func isExactMatch(existing, target DNSPolicy) bool {
 	case "CNAME_RECORD":
 		return existing.TargetDomain == target.TargetDomain
 	case "TXT_RECORD":
-		// Note: Depending on the UniFi API, it might return TXT strings wrapped in double quotes.
-		// If so, you may need to compare them like: strings.Trim(existing.Text, `"`) == strings.Trim(target.Text, `"`)
 		return existing.Text == target.Text
 	case "MX_RECORD":
 		return existing.MailServerDomain == target.MailServerDomain &&

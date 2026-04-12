@@ -77,7 +77,9 @@ func (c *Client) doRequest(
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	if c.Token != "" {
 		req.Header.Set("X-API-KEY", c.Token)
 	}
