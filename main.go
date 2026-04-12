@@ -64,15 +64,21 @@ For manual domain assignments, simply attach the 'relayd.hosts' label to your co
 			},
 			&cli.DurationFlag{
 				Name:    "interval",
+				Usage:   "Time interval for recurring background DNS synchronization (e.g. 5m, 1h)",
 				Value:   5 * time.Minute,
 				Sources: cli.EnvVars("RELAYD_INTERVAL"),
-				Usage:   "Time interval for recurring background DNS synchronization (e.g. 5m, 1h)",
+			},
+			&cli.StringFlag{
+				Name:    "instance-id",
+				Aliases: []string{"instance"},
+				Usage:   "Unique identifier for the relayd instance (e.g. 'my-instance')",
+				Sources: cli.EnvVars("RELAYD_INSTANCE_ID"),
 			},
 			&cli.StringFlag{
 				Name:    "ip-family",
+				Usage:   "IP family to synchronize: ipv4, ipv6, or dual",
 				Value:   "ipv4",
 				Sources: cli.EnvVars("RELAYD_IP_FAMILY"),
-				Usage:   "IP family to synchronize: ipv4, ipv6, or dual",
 			},
 		},
 	}

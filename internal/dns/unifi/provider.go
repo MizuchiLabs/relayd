@@ -268,15 +268,13 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 		domain = domain + "." + zone
 	}
 
-	ttl := int32(r.TTL.Seconds())
-
 	switch r.Type {
 	case "A":
 		return DNSPolicy{
 			Type:        "A_RECORD",
 			Domain:      domain,
 			IPv4Address: r.Data,
-			TTLSeconds:  ttl,
+			TTLSeconds:  0,
 			Enabled:     true,
 		}, nil
 	case "AAAA":
@@ -284,7 +282,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 			Type:        "AAAA_RECORD",
 			Domain:      domain,
 			IPv6Address: r.Data,
-			TTLSeconds:  ttl,
+			TTLSeconds:  0,
 			Enabled:     true,
 		}, nil
 	case "CNAME":
@@ -292,16 +290,16 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 			Type:         "CNAME_RECORD",
 			Domain:       domain,
 			TargetDomain: r.Data,
-			TTLSeconds:   ttl,
+			TTLSeconds:   0,
 			Enabled:      true,
 		}, nil
 	case "TXT":
+		// Note: No TTL is sent, will default to auto
 		return DNSPolicy{
-			Type:       "TXT_RECORD",
-			Domain:     domain,
-			Text:       r.Data,
-			TTLSeconds: ttl,
-			Enabled:    true,
+			Type:    "TXT_RECORD",
+			Domain:  domain,
+			Text:    r.Data,
+			Enabled: true,
 		}, nil
 	case "MX":
 		var priority uint16
@@ -313,7 +311,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 			Domain:           domain,
 			MailServerDomain: target,
 			Priority:         priority,
-			TTLSeconds:       ttl,
+			TTLSeconds:       0,
 			Enabled:          true,
 		}, nil
 	case "SRV":
@@ -345,7 +343,7 @@ func libdnsToPolicy(record libdns.Record, zone string) (DNSPolicy, error) {
 			Port:         port,
 			Weight:       weight,
 			Priority:     priority,
-			TTLSeconds:   ttl,
+			TTLSeconds:   0,
 			Enabled:      true,
 		}, nil
 	default:

@@ -4,6 +4,7 @@ package reconcile
 import (
 	"context"
 	"log/slog"
+	"sort"
 	"strings"
 
 	"github.com/libdns/libdns"
@@ -12,7 +13,7 @@ import (
 	"github.com/mizuchilabs/relayd/internal/util"
 )
 
-const txtPrefix = "_relayd"
+const txtPrefix = "relayd"
 
 type recordKey struct {
 	Type  string
@@ -24,7 +25,7 @@ type recordKey struct {
 func Apply(
 	ctx context.Context,
 	provider dns.Provider,
-	zone string,
+	instanceID, zone string,
 	hosts []string,
 	target targets.IPs,
 ) error {
@@ -34,7 +35,7 @@ func Apply(
 	}
 
 	desired := desiredSet(hosts, zone)
-	managed := managedSet(records, zone)
+	managed := managedSet(records, zone, instanceID)
 
 	existingHosts := make(map[string]struct{})
 	for _, r := range records {
@@ -67,7 +68,14 @@ func Apply(
 		}
 
 		rel := libdns.RelativeName(fqdn, util.WithDot(zone))
-
+		// Order matters here
+		if !provider.Force() {
+			desiredRecords = append(desiredRecords, dns.Record{
+				Type:  "TXT",
+				Name:  txtName(rel),
+				Value: txtValue(instanceID),
+			})
+		}
 		if target.IPv4 != "" {
 			desiredRecords = append(
 				desiredRecords,
@@ -79,14 +87,6 @@ func Apply(
 				desiredRecords,
 				dns.Record{Type: "AAAA", Name: rel, Value: target.IPv6},
 			)
-		}
-
-		if !provider.Force() {
-			desiredRecords = append(desiredRecords, dns.Record{
-				Type:  "TXT",
-				Name:  txtName(rel),
-				Value: "relayd",
-			})
 		}
 	}
 
@@ -102,11 +102,13 @@ func Apply(
 		desiredMap[key] = r
 	}
 
-	// Calculate Creates
-	for key, r := range desiredMap {
+	// Calculate Creates (Iterate slice to preserve TXT -> A/AAAA order)
+	for _, r := range desiredRecords {
+		key := recordKey{Type: r.Type, Name: r.Name, Value: r.Value}
 		if _, exists := existingMap[key]; !exists {
 			slog.Debug("Record to create", "type", r.Type, "name", r.Name, "value", r.Value)
 			changes.Create = append(changes.Create, r)
+			existingMap[key] = r // Add to existingMap temporarily so we don't duplicate creates
 		}
 	}
 
@@ -126,7 +128,6 @@ func Apply(
 			continue
 		}
 
-		// Figure out the host for the current record
 		absName := libdns.AbsoluteName(r.Name, util.WithDot(zone))
 		hostToCheck := strings.TrimSuffix(absName, ".")
 
@@ -144,8 +145,6 @@ func Apply(
 				shouldDelete = true
 			}
 		} else {
-			// Force mode: no TXT ownership records, so delete any A/AAAA record
-			// in this zone that is no longer in the desired set.
 			if _, isDesired := desired[hostToCheck]; !isDesired {
 				shouldDelete = true
 			}
@@ -158,6 +157,22 @@ func Apply(
 			)
 			changes.Delete = append(changes.Delete, r)
 		}
+	}
+
+	// Sort Deletes: A/AAAA records first, TXT records LAST.
+	// If deletion fails midway, we don't orphan A records without their owner TXT.
+	sort.Slice(changes.Delete, func(i, j int) bool {
+		if changes.Delete[i].Type != "TXT" && changes.Delete[j].Type == "TXT" {
+			return true
+		}
+		if changes.Delete[i].Type == "TXT" && changes.Delete[j].Type != "TXT" {
+			return false
+		}
+		return changes.Delete[i].Name < changes.Delete[j].Name
+	})
+
+	if len(changes.Create) == 0 && len(changes.Delete) == 0 {
+		return nil
 	}
 
 	if len(changes.Create) == 0 && len(changes.Delete) == 0 {
@@ -183,13 +198,15 @@ func desiredSet(hosts []string, zone string) map[string]struct{} {
 	return out
 }
 
-func managedSet(records []dns.Record, zone string) map[string]struct{} {
+func managedSet(records []dns.Record, zone string, instanceID string) map[string]struct{} {
 	out := make(map[string]struct{})
 	zDot := util.WithDot(strings.ToLower(zone))
 
 	for _, r := range records {
 		val := strings.Trim(r.Value, "\"")
-		if r.Type == "TXT" && val == "relayd" {
+
+		// only claim management if the TXT value matches our specific instance
+		if r.Type == "TXT" && val == txtValue(instanceID) {
 			name := strings.Trim(strings.ToLower(r.Name), ".")
 			if name == txtPrefix {
 				out[strings.TrimSuffix(zDot, ".")] = struct{}{}
@@ -207,4 +224,8 @@ func txtName(rel string) string {
 		return txtPrefix
 	}
 	return txtPrefix + "." + rel
+}
+
+func txtValue(instanceID string) string {
+	return "managed-by=relayd-" + instanceID
 }

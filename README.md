@@ -99,14 +99,15 @@ Relayd can be configured entirely via environment variables.
 
 ### Global Options
 
-| Variable                      | Default | Description                                                   |
-| :---------------------------- | :------ | :------------------------------------------------------------ |
-| `RELAYD_INTERVAL`             | `5m`    | Background sync interval (e.g. `5m`, `1h`).                   |
-| `RELAYD_IP_FAMILY`            | `ipv4`  | IP family to synchronize (`ipv4`, `ipv6`, `dual`).            |
-| `RELAYD_LOCAL_OVERRIDE_IPV4`  | _auto_  | Hardcode the local IPv4 address instead of auto-discovering.  |
-| `RELAYD_LOCAL_OVERRIDE_IPV6`  | _auto_  | Hardcode the local IPv6 address instead of auto-discovering.  |
-| `RELAYD_PUBLIC_OVERRIDE_IPV4` | _auto_  | Hardcode the public IPv4 address instead of auto-discovering. |
-| `RELAYD_PUBLIC_OVERRIDE_IPV6` | _auto_  | Hardcode the public IPv6 address instead of auto-discovering. |
+| Variable                      | Default    | Description                                                   |
+| :---------------------------- | :--------- | :------------------------------------------------------------ |
+| `RELAYD_INTERVAL`             | `5m`       | Background sync interval (e.g. `5m`, `1h`).                   |
+| `RELAYD_INSTANCE_ID`          | _hostname_ | Instance name (e.g. `my-nas`, `test-server`).                 |
+| `RELAYD_IP_FAMILY`            | `ipv4`     | IP family to synchronize (`ipv4`, `ipv6`, `dual`).            |
+| `RELAYD_LOCAL_OVERRIDE_IPV4`  | _auto_     | Hardcode the local IPv4 address instead of auto-discovering.  |
+| `RELAYD_LOCAL_OVERRIDE_IPV6`  | _auto_     | Hardcode the local IPv6 address instead of auto-discovering.  |
+| `RELAYD_PUBLIC_OVERRIDE_IPV4` | _auto_     | Hardcode the public IPv4 address instead of auto-discovering. |
+| `RELAYD_PUBLIC_OVERRIDE_IPV6` | _auto_     | Hardcode the public IPv6 address instead of auto-discovering. |
 
 ### Configuring Providers
 

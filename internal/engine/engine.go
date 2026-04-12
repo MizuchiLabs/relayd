@@ -103,20 +103,6 @@ func syncAll(
 
 	_ = resolveGroup.Wait()
 
-	slog.Debug(
-		"Syncing",
-		"hosts",
-		len(hosts),
-		"local_v4",
-		localIP.IPv4,
-		"local_v6",
-		localIP.IPv6,
-		"public_v4",
-		publicIP.IPv4,
-		"public_v6",
-		publicIP.IPv6,
-	)
-
 	g, gCtx := errgroup.WithContext(ctx)
 
 	for _, p := range providers {
@@ -159,7 +145,7 @@ func syncAll(
 			}
 
 			for _, zone := range p.Zones() {
-				if err := reconcile.Apply(gCtx, p, zone, providerHosts, ips); err != nil {
+				if err := reconcile.Apply(gCtx, p, cfg.InstanceID, zone, providerHosts, ips); err != nil {
 					slog.Error("Sync failed", "provider", p.Name(), "zone", zone, "error", err)
 				}
 			}
