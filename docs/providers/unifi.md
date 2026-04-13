@@ -11,3 +11,9 @@ RELAYD_PROVIDER_UNIFI_SITE_ID=default
 
 - **Scope**: `local`
 - **Requires**: UniFi controller credentials.
+
+### Adopting Existing Domains (The Manual Record Trap)
+
+If you manually created a DNS record in your provider's Web UI (e.g., UniFi) and then tell `relayd` to manage that same domain, `relayd` will skip it because it doesn't see a companion `TXT` record indicating ownership.
+
+- **The Fix:** To transfer ownership to `relayd`, simply delete the manually created record from your DNS provider's UI. Within seconds, `relayd` will see the gap, recreate the record via the API, and officially take ownership of it.

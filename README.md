@@ -92,18 +92,7 @@ If you run `relayd` on two entirely separate Docker hosts (Host A and Host B) th
 However, if you want Host A and Host B to act as a **High Availability cluster** managing the _same_ pool of records, they need to share an identity so they don't fight over ownership.
 
 - **The Fix:** Set the `RELAYD_INSTANCE_ID` environment variable to the exact same string (e.g., `my-ha-cluster`) on all instances.
-
-### Adopting Existing Domains (The Manual Record Trap)
-
-If you manually created a DNS record in your provider's Web UI (e.g., UniFi) and then tell `relayd` to manage that same domain, `relayd` will skip it because it doesn't see a companion `TXT` record indicating ownership.
-
-- **The Fix:** To transfer ownership to `relayd`, simply delete the manually created record from your DNS provider's UI. Within seconds, `relayd` will see the gap, recreate the record via the API, and officially take ownership of it.
-
-### Strict API Providers (UniFi / Pi-Hole)
-
-Some providers have highly restrictive APIs (e.g., UniFi does not allow custom TTLs, Pi-hole does not support TXT records natively). `relayd` automatically handles these internal quirks.
-
-- _Note for Pi-Hole:_ Because Pi-Hole cannot store `TXT` ownership records, its provider profile operates in **Force Mode** by default.
+- **Note:** Does not work with Pi-hole, names can clash here!
 
 ## Configuration
 
