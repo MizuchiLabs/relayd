@@ -2,6 +2,7 @@ package dns
 
 import (
 	"os"
+	"strings"
 
 	"github.com/libdns/rfc2136"
 	"github.com/mizuchilabs/relayd/internal/config"
@@ -15,6 +16,12 @@ func NewRFC2136Provider(cfg config.Provider) Provider {
 
 	if keyAlgorithm == "" {
 		keyAlgorithm = "hmac-sha256."
+	}
+	if !strings.HasSuffix(keyAlgorithm, ".") {
+		keyAlgorithm += "."
+	}
+	if keyName != "" && !strings.HasSuffix(keyName, ".") {
+		keyName += "."
 	}
 
 	return newWrapper(cfg, &rfc2136.Provider{
