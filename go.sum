@@ -85,6 +85,7 @@ github.com/libdns/digitalocean v0.0.0-20250606071607-dfa7af5c2e31 h1:raIuvxYVJtZ
 github.com/libdns/digitalocean v0.0.0-20250606071607-dfa7af5c2e31/go.mod h1:hde/tjNiPFe1lLaf2TtaCAYgJ9j/SGLhaQMpgZlF6e0=
 github.com/libdns/hetzner v1.0.0 h1:dFcgqTIfdiKQTqoqBBtgU9CewD8JSnB7p6BKxQ5kheM=
 github.com/libdns/hetzner v1.0.0/go.mod h1:OmuTyXMHTfy2nCqbt9KYkf0KwQSvo0ZeFGxEQSl3r2w=
+github.com/libdns/hetzner/v2 v2.0.1/go.mod h1:IkEcr62KG0rXYhs2K5VWCG4SFPUQWuI1SzlpXBz9amk=
 github.com/libdns/libdns v1.0.0-beta.1/go.mod h1:4Bj9+5CQiNMVGf87wjX4CY3HQJypUHRuLvlsfsZqLWQ=
 github.com/libdns/libdns v1.1.1 h1:wPrHrXILoSHKWJKGd0EiAVmiJbFShguILTg9leS/P/U=
 github.com/libdns/libdns v1.1.1/go.mod h1:4Bj9+5CQiNMVGf87wjX4CY3HQJypUHRuLvlsfsZqLWQ=
