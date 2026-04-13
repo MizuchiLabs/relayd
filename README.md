@@ -86,13 +86,10 @@ services:
 
 To prevent disaster, `relayd` uses a **Safe Ownership** model. Whenever it creates an `A` or `AAAA` record, it creates a companion `TXT` record (e.g., `relayd.yoursubdomain="managed-by=relayd-yourhostname"`). `relayd` will **never** delete or modify a DNS record unless it sees its exact matching TXT record.
 
-### High Availability & Multiple Instances (Split-Brain)
+### Multiple Instances (Split-Brain)
 
-If you run `relayd` on two entirely separate Docker hosts (Host A and Host B) that point to the same DNS Zone, they will natively ignore each other's records.
-However, if you want Host A and Host B to act as a **High Availability cluster** managing the _same_ pool of records, they need to share an identity so they don't fight over ownership.
-
-- **The Fix:** Set the `RELAYD_INSTANCE_ID` environment variable to the exact same string (e.g., `my-ha-cluster`) on all instances.
-- **Note:** Does not work with Pi-hole, names can clash here!
+If you run `relayd` on two entirely separate Docker hosts (Host A and Host B) that point to the same DNS Zone, they will natively ignore each other's records if their hostnames don't match and **force** mode is enabled.
+Otherwise if force mode is disabled and these instances point to the same DNS Zone, they will constantly overwrite each other's records! Be careful when using it with Pi-hole since it doesn't support TXT records.
 
 ## Configuration
 
