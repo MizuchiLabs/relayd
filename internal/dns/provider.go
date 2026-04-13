@@ -39,6 +39,14 @@ func BuildProviders(cfgs []config.Provider) ([]Provider, error) {
 			providers = append(providers, NewCloudflareProvider(cfg))
 		case "digitalocean":
 			providers = append(providers, NewDigitalOceanProvider(cfg))
+		case "hetzner":
+			providers = append(providers, NewHetznerProvider(cfg))
+		case "namecheap":
+			providers = append(providers, NewNamecheapProvider(cfg))
+		case "linode":
+			providers = append(providers, NewLinodeProvider(cfg))
+		case "scaleway":
+			providers = append(providers, NewScalewayProvider(cfg))
 		case "route53":
 			providers = append(providers, NewRoute53Provider(cfg))
 		case "powerdns":

@@ -113,12 +113,16 @@ Providers are automatically discovered by scanning your environment variables fo
 
 For detailed configuration examples per provider, see the [docs/providers](/docs/providers) directory:
 
+- [AWS Route53](/docs/providers/route53.md)
 - [Cloudflare](/docs/providers/cloudflare.md)
 - [DigitalOcean](/docs/providers/digitalocean.md)
+- [Hetzner](/docs/providers/hetzner.md)
+- [Linode](/docs/providers/linode.md)
+- [Namecheap](/docs/providers/namecheap.md)
 - [Pi-hole](/docs/providers/pihole.md)
 - [PowerDNS](/docs/providers/powerdns.md)
-- [AWS Route53](/docs/providers/route53.md)
 - [RFC2136](/docs/providers/rfc2136.md)
+- [Scaleway](/docs/providers/scaleway.md)
 - [UniFi](/docs/providers/unifi.md)
 
 ## License
