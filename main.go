@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -15,9 +16,9 @@ import (
 )
 
 var (
-	Version   = "dev"
-	Commit    = "none"
-	BuildDate = "unknown"
+	Version = "dev"
+	Commit  = "none"
+	Date    = "unknown"
 )
 
 func main() {
@@ -25,12 +26,8 @@ func main() {
 		EnableShellCompletion: true,
 		Suggest:               true,
 		Name:                  "relayd",
-		Version:               Version,
-		Usage:                 "relayd [command]",
-		Description: `Relayd automatically updates DNS records (A/AAAA/TXT) across various providers (Cloudflare, Route53, PowerDNS, etc.) based on Docker container labels. 
-		
-It handles both local (LAN) and public (WAN) IPs seamlessly using dual-stack IPv4/IPv6 support.
-For manual domain assignments, simply attach the 'relayd.hosts' label to your containers.`,
+		Version:               fmt.Sprintf("%s (commit: %s, built: %s)", Version, Commit, Date),
+		Usage:                 "keeps your DNS records in sync",
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 			level := slog.LevelInfo
 			if cmd.Bool("debug") {
@@ -89,4 +86,6 @@ For manual domain assignments, simply attach the 'relayd.hosts' label to your co
 	if err := cmd.Run(ctx, os.Args); err != nil {
 		log.Fatal(err)
 	}
+
+	slog.Info("Shutting down...")
 }
