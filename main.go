@@ -86,6 +86,4 @@ func main() {
 	if err := cmd.Run(ctx, os.Args); err != nil {
 		log.Fatal(err)
 	}
-
-	slog.Info("Shutting down...")
 }
