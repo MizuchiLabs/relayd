@@ -91,6 +91,23 @@ To prevent disaster, `relayd` uses a **Safe Ownership** model. Whenever it creat
 If you run `relayd` on two entirely separate Docker hosts (Host A and Host B) that point to the same DNS Zone, they will natively ignore each other's records if their hostnames don't match and **force** mode is enabled.
 Otherwise if force mode is disabled and these instances point to the same DNS Zone, they will constantly overwrite each other's records! Be careful when using it with Pi-hole since it doesn't support TXT records.
 
+### Using with tether & tetherd (Centralized Traefik)
+
+If you are using `relayd` in combination with `tether` and `tetherd` to proxy Traefik configurations to a central hub, you may encounter a DNS routing issue.
+
+By default, an agent running `relayd` will publish its _own_ local IP for its containers. However, since all traffic must flow through your central Traefik instance, DNS queries will point to the agent instead of the central router, causing resolution to fail.
+
+To fix this, you need to explicitly tell `relayd` on the agent machines to broadcast the central Traefik server's IP instead of their own. You can do this using the IP override environment variables:
+
+```yaml
+services:
+  relayd:
+    image: ghcr.io/mizuchilabs/relayd:latest
+    environment:
+      # Override the detected IP with the IP of your central Traefik instance
+      - RELAYD_LOCAL_OVERRIDE_IPV4=192.168.1.10
+```
+
 ## Configuration
 
 Relayd can be configured entirely via environment variables.
