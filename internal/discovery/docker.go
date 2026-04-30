@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"slices"
 	"strings"
 
 	"github.com/mizuchilabs/relayd/internal/util"
@@ -130,25 +129,23 @@ func extractHostnames(labels map[string]string) []string {
 }
 
 func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
-	args := client.Filters{}
-	args.Add("type", "container")
-	args.Add("type", "service")
+	filters := client.Filters{}
+	filters.Add("type", "container")
+	filters.Add("type", "service")
+	filters.Add("event", "start")
+	filters.Add("event", "restart")
+	filters.Add("event", "die")
+	filters.Add("event", "stop")
+	filters.Add("event", "remove")
+	filters.Add("event", "destroy")
+	filters.Add("event", "rename")
+	filters.Add("event", "create")
+	filters.Add("event", "update")
 
-	stream := s.client.Events(ctx, client.EventsListOptions{Filters: args})
+	stream := s.client.Events(ctx, client.EventsListOptions{Filters: filters})
 	out := make(chan Event, 100)
 	errOut := make(chan error, 1)
 
-	relevantActions := []string{
-		"start",
-		"restart",
-		"die",
-		"stop",
-		"destroy",
-		"rename",
-		"update",
-		"create",
-		"remove",
-	}
 	go func() {
 		defer close(out)
 		defer close(errOut)
@@ -168,9 +165,7 @@ func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
 					errOut <- fmt.Errorf("docker event stream closed unexpectedly")
 					return
 				}
-				if slices.Contains(relevantActions, string(msg.Action)) {
-					out <- Event{Action: string(msg.Action), ID: msg.Actor.ID}
-				}
+				out <- Event{Action: string(msg.Action), ID: msg.Actor.ID}
 			}
 		}
 	}()
