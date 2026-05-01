@@ -15,7 +15,7 @@ tasks:
   build:
     desc: Build binary
     cmds:
-      - go build -ldflags="-s -w" -trimpath -o bin/relayd
+      - go build -ldflags="-s -w" -trimpath -o relayd
 
   # 󰉠  Lint / static checks
   lint:
@@ -26,21 +26,17 @@ tasks:
       - go vet ./...
       - govulncheck ./...
       - go test -cover ./...
+      - gosec -exclude-generated ./...
 
   snapshot:
     desc: Build snapshot
     cmds:
       - goreleaser --snapshot --clean --skip=validate,sign,sbom,archive
+      - docker tag goreleaser.ko.local:latest $IMAGE:nightly
+      - grype $IMAGE:nightly
 
-  # 󱓞  Release
-  release:
-    desc: Build release
-    deps: [lint]
+  snapshot:push:
+    desc: Build and push snapshot to registry
+    deps: [snapshot]
     cmds:
-      - goreleaser release --clean --skip=validate
-
-  docker:push:
-    desc: Build and push container to registry
-    cmds:
-      - goreleaser release --clean --skip=validate,sign,sbom,archive
-      - grype $IMAGE
+      - docker push $IMAGE:nightly
