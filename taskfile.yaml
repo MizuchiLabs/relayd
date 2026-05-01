@@ -5,19 +5,16 @@ env:
   IMAGE: ghcr.io/mizuchilabs/relayd
 
 tasks:
-  # 󰚰 Update deps
   update:
     desc: Update dependencies
     cmds:
       - go get -u ./...
 
-  #   Build
   build:
     desc: Build binary
     cmds:
       - go build -ldflags="-s -w" -trimpath -o relayd
 
-  # 󰉠  Lint / static checks
   lint:
     desc: Run go vet & lint
     cmds:
