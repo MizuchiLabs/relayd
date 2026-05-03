@@ -130,17 +130,17 @@ func extractHostnames(labels map[string]string) []string {
 
 func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
 	filters := client.Filters{}
+
+	// Standalone Containers
 	filters.Add("type", "container")
-	filters.Add("type", "service")
 	filters.Add("event", "start")
-	filters.Add("event", "restart")
 	filters.Add("event", "die")
-	filters.Add("event", "stop")
-	filters.Add("event", "remove")
-	filters.Add("event", "destroy")
-	filters.Add("event", "rename")
+
+	// Swarm Services
+	filters.Add("type", "service")
 	filters.Add("event", "create")
 	filters.Add("event", "update")
+	filters.Add("event", "remove")
 
 	stream := s.client.Events(ctx, client.EventsListOptions{Filters: filters})
 	out := make(chan Event, 100)
