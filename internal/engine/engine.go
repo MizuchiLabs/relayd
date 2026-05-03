@@ -4,6 +4,7 @@ package engine
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/mizuchilabs/relayd/internal/config"
@@ -11,7 +12,6 @@ import (
 	"github.com/mizuchilabs/relayd/internal/dns"
 	"github.com/mizuchilabs/relayd/internal/reconcile"
 	"github.com/mizuchilabs/relayd/internal/targets"
-	"golang.org/x/sync/errgroup"
 )
 
 func Run(ctx context.Context, cfg config.Config) error {
@@ -28,104 +28,58 @@ func Run(ctx context.Context, cfg config.Config) error {
 	}
 	defer func() { _ = source.Close() }()
 
-	if err := syncAll(ctx, cfg, providers, source); err != nil {
-		slog.Error("Initial sync failed", "error", err)
-	}
+	// Initial sync
+	update(ctx, cfg, providers, source)
 
-	events, watchErrs := source.Watch(ctx)
+	events := source.Watch(ctx)
 	ticker := time.NewTicker(cfg.Interval)
 	defer ticker.Stop()
-
-	var debounceTimer *time.Timer
-	var debounce <-chan time.Time
-	const debounceDuration = 3 * time.Second
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case err := <-watchErrs:
-			slog.Warn("Docker connection lost, attempting to reconnect...", "error", err)
-			time.Sleep(5 * time.Second)
-
-			// Close old source, create new one
-			_ = source.Close()
-			newSource, err := discovery.NewDockerSource()
-			if err != nil {
-				slog.Error("Failed to reconnect to Docker", "error", err)
-			} else {
-				source = newSource
-				events, watchErrs = source.Watch(ctx)
-				slog.Info("Successfully reconnected to Docker event stream")
-			}
-
-		case ev := <-events:
-			slog.Debug("Docker event received", "action", ev.Action)
-			if debounceTimer == nil {
-				debounceTimer = time.NewTimer(debounceDuration)
-				debounce = debounceTimer.C
-			} else {
-				// Safely stop and drain the timer before resetting
-				if !debounceTimer.Stop() {
-					select {
-					case <-debounceTimer.C:
-					default:
-					}
-				}
-				debounceTimer.Reset(debounceDuration)
-			}
-		case <-debounce:
-			debounceTimer = nil
-			debounce = nil
-			slog.Debug("Docker event debounced")
-			if err := syncAll(ctx, cfg, providers, source); err != nil {
-				slog.Error("Event-triggered sync failed", "error", err)
-			}
+		case <-events:
+			update(ctx, cfg, providers, source)
 		case <-ticker.C:
-			if err := syncAll(ctx, cfg, providers, source); err != nil {
-				slog.Error("Background sync failed", "error", err)
-			}
+			update(ctx, cfg, providers, source)
 		}
 	}
 }
 
-func syncAll(
+func update(
 	ctx context.Context,
 	cfg config.Config,
 	providers []dns.Provider,
 	source *discovery.DockerSource,
-) error {
+) {
 	hosts, err := source.ListHostnames(ctx)
 	if err != nil {
-		return err
+		slog.Error("Failed to list hostnames", "error", err)
+		return
 	}
 
-	resolveGroup, resolveCtx := errgroup.WithContext(ctx)
+	var resolveGroup sync.WaitGroup
 
 	var localIP, publicIP targets.IPs
-
-	resolveGroup.Go(func() error {
+	resolveGroup.Go(func() {
 		ips, err := targets.ResolveLocalIP(cfg.IPFamily)
 		if err == nil {
 			localIP = ips
 		}
-		return nil
 	})
 
-	resolveGroup.Go(func() error {
-		ips, err := targets.ResolvePublicIP(resolveCtx, cfg.IPFamily)
+	resolveGroup.Go(func() {
+		ips, err := targets.ResolvePublicIP(ctx, cfg.IPFamily)
 		if err == nil {
 			publicIP = ips
 		}
-		return nil
 	})
+	resolveGroup.Wait()
 
-	_ = resolveGroup.Wait()
-
-	g, gCtx := errgroup.WithContext(ctx)
-
+	var wg sync.WaitGroup
 	for _, p := range providers {
-		g.Go(func() error {
+		wg.Go(func() {
 			var providerHosts []string
 			for host, allowed := range hosts {
 				isAllowed := false
@@ -160,17 +114,15 @@ func syncAll(
 					"family",
 					cfg.IPFamily,
 				)
-				return nil
+				return
 			}
 
 			for _, zone := range p.Zones() {
-				if err := reconcile.Apply(gCtx, p, cfg.Instance, zone, providerHosts, ips); err != nil {
+				if err := reconcile.Apply(ctx, p, cfg.Instance, zone, providerHosts, ips); err != nil {
 					slog.Error("Sync failed", "provider", p.Name(), "zone", zone, "error", err)
 				}
 			}
-			return nil
 		})
 	}
-
-	return g.Wait()
+	wg.Wait()
 }

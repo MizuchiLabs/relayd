@@ -3,11 +3,13 @@ package discovery
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/mizuchilabs/relayd/internal/util"
+	"github.com/moby/moby/api/types/events"
 	"github.com/moby/moby/client"
 )
 
@@ -17,7 +19,7 @@ type Event struct {
 }
 
 type DockerSource struct {
-	client *client.Client
+	cli *client.Client
 }
 
 var hostRuleRegex = regexp.MustCompile(`Host\(([^)]*)\)`)
@@ -27,11 +29,11 @@ func NewDockerSource() (*DockerSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &DockerSource{client: cli}, nil
+	return &DockerSource{cli: cli}, nil
 }
 
 func (s *DockerSource) Close() error {
-	return s.client.Close()
+	return s.cli.Close()
 }
 
 func (s *DockerSource) ListHostnames(ctx context.Context) (map[string][]string, error) {
@@ -39,7 +41,7 @@ func (s *DockerSource) ListHostnames(ctx context.Context) (map[string][]string, 
 
 	filters := client.Filters{}
 	filters.Add("label", "relayd.enable=true")
-	containers, err := s.client.ContainerList(ctx, client.ContainerListOptions{Filters: filters})
+	containers, err := s.cli.ContainerList(ctx, client.ContainerListOptions{Filters: filters})
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +51,7 @@ func (s *DockerSource) ListHostnames(ctx context.Context) (map[string][]string, 
 	}
 
 	// Fetch swarm services (ignoring errors if not a swarm manager)
-	services, err := s.client.ServiceList(ctx, client.ServiceListOptions{})
+	services, err := s.cli.ServiceList(ctx, client.ServiceListOptions{})
 	if err == nil {
 		for _, svc := range services.Items {
 			// Check both service-level and container-level labels
@@ -128,47 +130,73 @@ func extractHostnames(labels map[string]string) []string {
 	return hosts
 }
 
-func (s *DockerSource) Watch(ctx context.Context) (<-chan Event, <-chan error) {
-	filters := client.Filters{}
+func (s *DockerSource) Watch(ctx context.Context) <-chan Event {
+	var stream <-chan events.Message
+	var errs <-chan error
 
-	// Standalone Containers
-	filters.Add("type", "container")
-	filters.Add("event", "start")
-	filters.Add("event", "die")
-
-	// Swarm Services
-	filters.Add("type", "service")
-	filters.Add("event", "create")
-	filters.Add("event", "update")
-	filters.Add("event", "remove")
-
-	stream := s.client.Events(ctx, client.EventsListOptions{Filters: filters})
 	out := make(chan Event, 100)
-	errOut := make(chan error, 1)
+	startStream := func() {
+		filters := client.Filters{}
 
+		// Standalone Containers
+		filters.Add("type", "container")
+		filters.Add("event", "start")
+		filters.Add("event", "die")
+
+		// Swarm Services
+		filters.Add("type", "service")
+		filters.Add("event", "create")
+		filters.Add("event", "update")
+		filters.Add("event", "remove")
+
+		res := s.cli.Events(ctx, client.EventsListOptions{Filters: filters})
+		stream = res.Messages
+		errs = res.Err
+	}
+
+	startStream()
+
+	var debounceTimer *time.Timer
 	go func() {
 		defer close(out)
-		defer close(errOut)
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case err, ok := <-stream.Err:
-				if ok {
-					errOut <- err
-				} else {
-					errOut <- fmt.Errorf("docker event stream closed unexpectedly")
+			case err, ok := <-errs:
+				if !ok || err != nil {
+					if ctx.Err() != nil {
+						return
+					}
+					if err != nil {
+						slog.Error("Docker event error", "error", err)
+					}
+					time.Sleep(3 * time.Second)
+					startStream()
+					out <- Event{Action: "reconnect"}
 				}
-				return
-			case msg, ok := <-stream.Messages:
+
+			case msg, ok := <-stream:
 				if !ok {
-					errOut <- fmt.Errorf("docker event stream closed unexpectedly")
-					return
+					if ctx.Err() != nil {
+						return
+					}
+					slog.Warn("Docker event stream closed, reconnecting...")
+					time.Sleep(3 * time.Second)
+					startStream()
+					out <- Event{Action: "reconnect"}
+					continue
 				}
-				out <- Event{Action: string(msg.Action), ID: msg.Actor.ID}
+
+				if debounceTimer != nil {
+					debounceTimer.Stop()
+				}
+				debounceTimer = time.AfterFunc(100*time.Millisecond, func() {
+					out <- Event{Action: string(msg.Action), ID: msg.Actor.ID}
+				})
 			}
 		}
 	}()
 
-	return out, errOut
+	return out
 }
