@@ -144,11 +144,7 @@ func (c *Client) getRecords(ctx context.Context, zone string) ([]DNSPolicy, erro
 
 	zoneFilter := strings.TrimSuffix(zone, ".")
 	filter := fmt.Sprintf("or(domain.eq('%s'),domain.like('*%s'))", zoneFilter, zoneFilter)
-	filterEscaped := strings.ReplaceAll(
-		filter,
-		" ",
-		"%20",
-	) // simple escape is often enough, or net/url
+	filterEscaped := strings.ReplaceAll(filter, " ", "%20")
 
 	for {
 		urlStr := fmt.Sprintf(
