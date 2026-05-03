@@ -13,6 +13,7 @@ require (
 	github.com/libdns/rfc2136 v1.0.1
 	github.com/libdns/route53 v1.6.2
 	github.com/libdns/scaleway v0.2.4
+	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
 	github.com/urfave/cli/v3 v3.8.0
 	golang.org/x/sync v0.20.0
@@ -55,7 +56,6 @@ require (
 	github.com/miekg/dns v1.1.72 // indirect
 	github.com/mittwald/go-powerdns v0.6.7 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
-	github.com/moby/moby/api v1.54.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
@@ -78,6 +78,6 @@ require (
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-	gopkg.in/ini.v1 v1.67.1 // indirect
+	gopkg.in/ini.v1 v1.67.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
