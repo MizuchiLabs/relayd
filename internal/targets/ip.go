@@ -16,6 +16,18 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var (
+	ipv4Providers = []string{
+		"https://api.ipify.org",
+		"https://icanhazip.com",
+		"https://ifconfig.me/ip",
+	}
+	ipv6Providers = []string{
+		"https://api6.ipify.org",
+		"https://v6.ident.me",
+	}
+)
+
 type IPs struct {
 	IPv4 string
 	IPv6 string
@@ -158,18 +170,6 @@ func ResolveLocalIP(family string) (IPs, error) {
 	}
 	return ips, nil
 }
-
-var (
-	ipv4Providers = []string{
-		"https://api.ipify.org",
-		"https://icanhazip.com",
-		"https://ifconfig.me/ip",
-	}
-	ipv6Providers = []string{
-		"https://api6.ipify.org",
-		"https://v6.ident.me",
-	}
-)
 
 func ResolvePublicIP(ctx context.Context, family string) (IPs, error) {
 	var ips IPs
