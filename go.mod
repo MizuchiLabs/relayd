@@ -15,7 +15,7 @@ require (
 	github.com/libdns/scaleway v0.2.4
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
-	github.com/urfave/cli/v3 v3.8.0
+	github.com/urfave/cli/v3 v3.9.0
 	golang.org/x/sync v0.20.0
 )
 
