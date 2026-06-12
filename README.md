@@ -79,7 +79,7 @@ services:
       - traefik.enable=true
       - traefik.http.routers.whoami.rule=Host(`whoami.example.com`)
       # To restrict which DNS providers or scopes a container uses use the `relayd.providers` label:
-      - relayd.providers=local # or cloudflare, pihole, unifi, powerdns
+      - relayd.providers=local # or public, cloudflare, pihole, unifi...
 ```
 
 ## Architecture & Edge Cases
