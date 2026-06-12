@@ -3,12 +3,14 @@ package pihole
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/libdns/libdns"
 )
@@ -16,12 +18,27 @@ import (
 type Client struct {
 	Server   string
 	Password string
+	client   *http.Client
 }
 
 type apiResponse struct {
 	Success bool       `json:"success"`
 	Message string     `json:"message"`
 	Data    [][]string `json:"data"` // For get action
+}
+
+func (c *Client) getClient() *http.Client {
+	if c.client == nil {
+		customTransport := http.DefaultTransport.(*http.Transport).Clone()
+		// #nosec G402 - PiHole might use self-signed certs
+		customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+		c.client = &http.Client{
+			Timeout:   10 * time.Second,
+			Transport: customTransport,
+		}
+	}
+	return c.client
 }
 
 func (c *Client) doRequest(ctx context.Context, action string, q url.Values) (*apiResponse, error) {
@@ -37,7 +54,7 @@ func (c *Client) doRequest(ctx context.Context, action string, q url.Values) (*a
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.getClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -55,13 +72,7 @@ func (c *Client) doRequest(ctx context.Context, action string, q url.Values) (*a
 
 	var result apiResponse
 	if err := json.Unmarshal(bodyBytes, &result); err != nil {
-		// Pihole might return non-json on error or success sometimes?
-		// Usually it's JSON: {"success":true,"message":""}
-		return nil, fmt.Errorf(
-			"failed to parse pi-hole response: %s (body: %s)",
-			err,
-			string(bodyBytes),
-		)
+		return nil, fmt.Errorf("failed to parse pi-hole response: %s", err)
 	}
 
 	if !result.Success && action != "get" && result.Message != "" {
