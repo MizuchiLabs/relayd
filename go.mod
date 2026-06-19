@@ -14,7 +14,7 @@ require (
 	github.com/libdns/route53 v1.6.2
 	github.com/libdns/scaleway v0.3.1
 	github.com/moby/moby/api v1.55.0
-	github.com/moby/moby/client v0.4.1
+	github.com/moby/moby/client v0.5.0
 	github.com/urfave/cli/v3 v3.10.0
 	golang.org/x/sync v0.21.0
 )
