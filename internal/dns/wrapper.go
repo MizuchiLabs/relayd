@@ -106,7 +106,7 @@ func toLibDNS(records []Record) []libdns.Record {
 				Name: r.Name,
 				Data: r.Value,
 			}
-			if parsed, err := rr.Parse(); err == nil && parsed != nil {
+			if parsed, err := rr.Parse(); err == nil {
 				out = append(out, parsed)
 			} else {
 				out = append(out, rr)

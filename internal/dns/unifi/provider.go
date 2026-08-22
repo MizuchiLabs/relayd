@@ -256,7 +256,7 @@ func policyToLibdns(policy DNSPolicy, zone string) (libdns.Record, error) {
 
 	// For compatibility with libdns specific types
 	parsed, err := rr.Parse()
-	if err == nil && parsed != nil {
+	if err == nil {
 		return unifiRecord{Record: parsed, ID: policy.ID}, nil
 	}
 	return unifiRecord{Record: rr, ID: policy.ID}, nil
