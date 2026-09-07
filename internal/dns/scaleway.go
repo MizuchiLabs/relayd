@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/libdns/scaleway"
+
 	"github.com/mizuchilabs/relayd/internal/config"
 )
 

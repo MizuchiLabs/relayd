@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/libdns/libdns"
+
 	"github.com/mizuchilabs/relayd/internal/config"
 )
 

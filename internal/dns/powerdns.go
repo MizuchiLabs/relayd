@@ -2,6 +2,7 @@ package dns
 
 import (
 	"github.com/libdns/powerdns"
+
 	"github.com/mizuchilabs/relayd/internal/config"
 )
 

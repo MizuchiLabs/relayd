@@ -9,6 +9,7 @@ import (
 	"time"
 
 	libdnscloudflare "github.com/libdns/cloudflare"
+
 	"github.com/mizuchilabs/relayd/internal/config"
 )
 

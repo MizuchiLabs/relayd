@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mizuchilabs/relayd/internal/util"
 	"github.com/moby/moby/api/types/events"
 	"github.com/moby/moby/client"
+
+	"github.com/mizuchilabs/relayd/internal/util"
 )
 
 type Event struct {

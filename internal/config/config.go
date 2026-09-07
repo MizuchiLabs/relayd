@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mizuchilabs/relayd/internal/util"
 	"github.com/urfave/cli/v3"
+
+	"github.com/mizuchilabs/relayd/internal/util"
 )
 
 // Config holds the configuration for relayd.

@@ -2,6 +2,7 @@ package dns
 
 import (
 	"github.com/libdns/hetzner/v2"
+
 	"github.com/mizuchilabs/relayd/internal/config"
 )
 

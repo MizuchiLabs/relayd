@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/libdns/route53"
+
 	"github.com/mizuchilabs/relayd/internal/config"
 )
 

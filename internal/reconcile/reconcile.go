@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/libdns/libdns"
+
 	"github.com/mizuchilabs/relayd/internal/dns"
 	"github.com/mizuchilabs/relayd/internal/targets"
 	"github.com/mizuchilabs/relayd/internal/util"

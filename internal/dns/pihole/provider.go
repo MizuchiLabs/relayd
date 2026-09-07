@@ -7,7 +7,7 @@ import (
 	"github.com/libdns/libdns"
 )
 
-// Provider implements the libdns interfaces for Pi-hole
+// Provider implements the libdns interfaces for Pi-hole.
 type Provider struct {
 	client   *Client
 	Server   string `json:"server,omitempty"`

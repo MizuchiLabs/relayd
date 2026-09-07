@@ -19,6 +19,7 @@ type Provider struct {
 
 type unifiRecord struct {
 	libdns.Record
+
 	ID string
 }
 
