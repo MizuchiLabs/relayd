@@ -56,7 +56,8 @@ type sitesResponse struct {
 
 func (c *Client) getClient() *http.Client {
 	if c.client == nil {
-		customTransport := http.DefaultTransport.(*http.Transport).Clone()
+		base, _ := http.DefaultTransport.(*http.Transport)
+		customTransport := base.Clone()
 		// #nosec G402 - Unifi ships with self-signed certs
 		customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
@@ -81,7 +82,7 @@ func (c *Client) doRequest(
 		req.Header.Set("Content-Type", "application/json")
 	}
 	if c.Token != "" {
-		req.Header.Set("X-API-KEY", c.Token)
+		req.Header.Set("X-Api-Key", c.Token)
 	}
 
 	resp, err := c.getClient().Do(req)

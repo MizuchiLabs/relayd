@@ -29,7 +29,8 @@ type apiResponse struct {
 
 func (c *Client) getClient() *http.Client {
 	if c.client == nil {
-		customTransport := http.DefaultTransport.(*http.Transport).Clone()
+		base, _ := http.DefaultTransport.(*http.Transport)
+		customTransport := base.Clone()
 		// #nosec G402 - PiHole might use self-signed certs
 		customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
@@ -49,7 +50,7 @@ func (c *Client) doRequest(ctx context.Context, action string, q url.Values) (*a
 	q.Set("auth", c.Password)
 	q.Set("action", action)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL+"?"+q.Encode(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL+"?"+q.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,7 @@ func (c *Client) doRequest(ctx context.Context, action string, q url.Values) (*a
 
 	var result apiResponse
 	if err := json.Unmarshal(bodyBytes, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse pi-hole response: %s", err)
+		return nil, fmt.Errorf("failed to parse pi-hole response: %w", err)
 	}
 
 	if !result.Success && action != "get" && result.Message != "" {
