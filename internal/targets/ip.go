@@ -12,8 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mizuchilabs/relayd/internal/util"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/mizuchilabs/relayd/internal/util"
 )
 
 var (
@@ -54,10 +55,10 @@ func isVirtualInterface(name string) bool {
 	return false
 }
 
-func getPreferredIP(network, address string) string {
+func getPreferredIP(ctx context.Context, network, address string) string {
 	// A dummy connection to find the preferred outbound IP.
 	// It doesn't actually send packets if it's UDP.
-	conn, err := net.Dial(network, address)
+	conn, err := (&net.Dialer{}).DialContext(ctx, network, address)
 	if err != nil {
 		return ""
 	}
@@ -69,7 +70,7 @@ func getPreferredIP(network, address string) string {
 	return ""
 }
 
-func ResolveLocalIP(family string) (IPs, error) {
+func ResolveLocalIP(ctx context.Context, family string) (IPs, error) {
 	var ips IPs
 
 	if family == "ipv4" || family == "dual" || family == "" {
@@ -94,12 +95,12 @@ func ResolveLocalIP(family string) (IPs, error) {
 	}
 
 	if (family == "ipv4" || family == "dual" || family == "") && ips.IPv4 == "" {
-		if ip := getPreferredIP("udp4", "1.1.1.1:53"); ip != "" {
+		if ip := getPreferredIP(ctx, "udp4", "1.1.1.1:53"); ip != "" {
 			ips.IPv4 = ip
 		}
 	}
 	if (family == "ipv6" || family == "dual") && ips.IPv6 == "" {
-		if ip := getPreferredIP("udp6", "[2606:4700:4700::1111]:53"); ip != "" {
+		if ip := getPreferredIP(ctx, "udp6", "[2606:4700:4700::1111]:53"); ip != "" {
 			ips.IPv6 = ip
 		}
 	}

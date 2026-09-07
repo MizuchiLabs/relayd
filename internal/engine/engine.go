@@ -63,7 +63,7 @@ func update(
 
 	var localIP, publicIP targets.IPs
 	resolveGroup.Go(func() {
-		ips, err := targets.ResolveLocalIP(cfg.IPFamily)
+		ips, err := targets.ResolveLocalIP(ctx, cfg.IPFamily)
 		if err == nil {
 			localIP = ips
 		}
