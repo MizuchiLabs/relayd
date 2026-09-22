@@ -5,7 +5,7 @@
   "timezone": "Europe/Vienna",
   "packageRules": [
     {
-      "matchPackagePatterns": ["*"],
+      "matchPackageNames": ["*"],
       "automerge": true
     }
   ],
