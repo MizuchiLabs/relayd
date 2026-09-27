@@ -18,6 +18,7 @@ type Client struct {
 	BaseURL        string
 	Token          string
 	Site           string
+	Insecure       bool
 	resolvedSiteID string
 	client         *http.Client
 }
@@ -58,8 +59,10 @@ func (c *Client) getClient() *http.Client {
 	if c.client == nil {
 		base, _ := http.DefaultTransport.(*http.Transport)
 		customTransport := base.Clone()
-		// #nosec G402 - Unifi ships with self-signed certs
-		customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		if c.Insecure {
+			// #nosec G402 - opt-in, UniFi ships with self-signed certs
+			customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		}
 
 		c.client = &http.Client{
 			Timeout:   10 * time.Second,

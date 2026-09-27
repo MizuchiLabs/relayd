@@ -2,66 +2,37 @@ package dns
 
 import (
 	"context"
+	"errors"
+	"net/netip"
 	"strings"
+	"time"
 
 	"github.com/libdns/libdns"
-
-	"github.com/mizuchilabs/relayd/internal/config"
 )
 
-// libDNSClient defines the interface expected from a libdns provider.
-type libDNSClient interface {
-	GetRecords(ctx context.Context, zone string) ([]libdns.Record, error)
-	AppendRecords(
-		ctx context.Context,
-		zone string,
-		records []libdns.Record,
-	) ([]libdns.Record, error)
-	SetRecords(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error)
-	DeleteRecords(
-		ctx context.Context,
-		zone string,
-		records []libdns.Record,
-	) ([]libdns.Record, error)
+// Record is a normalized DNS record so values from different providers compare equal.
+type Record struct {
+	Type  string
+	Name  string
+	Value string
+	TTL   time.Duration
+
+	raw libdns.Record
 }
 
-// wrapper provides a uniform interface to a libDNSClient.
-type wrapper struct {
-	name   string
-	scope  string
-	zones  []string
-	force  bool
-	client libDNSClient
+// ChangeSet holds the changes for one zone. Update only changes the TTL of an existing record.
+type ChangeSet struct {
+	Create []Record
+	Update []Record
+	Delete []Record
 }
 
-func newWrapper(cfg config.Provider, client libDNSClient) *wrapper {
-	return &wrapper{
-		name:   cfg.Name,
-		scope:  cfg.Scope,
-		zones:  append([]string(nil), cfg.Zones...),
-		force:  cfg.Force,
-		client: client,
-	}
+func (c ChangeSet) Empty() bool {
+	return len(c.Create) == 0 && len(c.Update) == 0 && len(c.Delete) == 0
 }
 
-func (w *wrapper) Name() string {
-	return w.name
-}
-
-func (w *wrapper) Scope() string {
-	return w.scope
-}
-
-func (w *wrapper) Zones() []string {
-	return append([]string(nil), w.zones...)
-}
-
-func (w *wrapper) Force() bool {
-	return w.force
-}
-
-func (w *wrapper) Records(ctx context.Context, zone string) ([]Record, error) {
-	records, err := w.client.GetRecords(ctx, zone)
+func (p *Provider) Records(ctx context.Context, zone string) ([]Record, error) {
+	records, err := p.client.GetRecords(ctx, zone)
 	if err != nil {
 		return nil, err
 	}
@@ -72,57 +43,68 @@ func (w *wrapper) Records(ctx context.Context, zone string) ([]Record, error) {
 	return out, nil
 }
 
-func (w *wrapper) Apply(ctx context.Context, zone string, changes ChangeSet) error {
-	createSet := toLibDNS(changes.Create)
-	updateSet := toLibDNS(changes.Update)
-	deleteSet := toLibDNS(changes.Delete)
-
-	if len(createSet) > 0 {
-		if _, err := w.client.AppendRecords(ctx, zone, createSet); err != nil {
+// Apply creates before it deletes, so a host is never left without records mid-update.
+func (p *Provider) Apply(ctx context.Context, zone string, changes ChangeSet) error {
+	if len(changes.Create) > 0 {
+		if _, err := p.client.AppendRecords(ctx, zone, toLibDNS(changes.Create)); err != nil {
 			return err
 		}
 	}
-	if len(updateSet) > 0 {
-		if _, err := w.client.SetRecords(ctx, zone, updateSet); err != nil {
+	if len(changes.Update) > 0 {
+		setter, ok := p.client.(libdns.RecordSetter)
+		if !ok {
+			return errors.New("provider can't update records")
+		}
+		if _, err := setter.SetRecords(ctx, zone, toLibDNS(changes.Update)); err != nil {
 			return err
 		}
 	}
-	if len(deleteSet) > 0 {
-		if _, err := w.client.DeleteRecords(ctx, zone, deleteSet); err != nil {
+	if len(changes.Delete) > 0 {
+		if _, err := p.client.DeleteRecords(ctx, zone, toLibDNS(changes.Delete)); err != nil {
 			return err
 		}
 	}
-
 	return nil
-}
-
-func toLibDNS(records []Record) []libdns.Record {
-	out := make([]libdns.Record, 0, len(records))
-	for _, r := range records {
-		if r.Original != nil {
-			out = append(out, r.Original)
-		} else {
-			rr := libdns.RR{
-				Type: strings.ToUpper(r.Type),
-				Name: r.Name,
-				Data: r.Value,
-			}
-			if parsed, err := rr.Parse(); err == nil {
-				out = append(out, parsed)
-			} else {
-				out = append(out, rr)
-			}
-		}
-	}
-	return out
 }
 
 func fromLibDNS(record libdns.Record) Record {
 	rr := record.RR()
-	return Record{
-		Type:     rr.Type,
-		Name:     rr.Name,
-		Value:    rr.Data,
-		Original: record,
+	r := Record{
+		Type:  strings.ToUpper(rr.Type),
+		Name:  strings.ToLower(rr.Name),
+		Value: rr.Data,
+		TTL:   rr.TTL,
+		raw:   record,
 	}
+	if r.Name == "" {
+		r.Name = "@"
+	}
+	switch r.Type {
+	case "TXT":
+		r.Value = strings.Trim(r.Value, `"`)
+	case "A", "AAAA":
+		if ip, err := netip.ParseAddr(r.Value); err == nil {
+			r.Value = ip.String()
+		}
+	}
+	return r
+}
+
+// toLibDNS hands back the provider's own record when there is one, since some
+// providers (UniFi) need the IDs they attached to it.
+func toLibDNS(records []Record) []libdns.Record {
+	out := make([]libdns.Record, 0, len(records))
+	for _, r := range records {
+		if r.raw != nil {
+			out = append(out, r.raw)
+			continue
+		}
+		rr := libdns.RR{Type: r.Type, Name: r.Name, Data: r.Value, TTL: r.TTL}
+		if parsed, err := rr.Parse(); err == nil {
+			out = append(out, parsed)
+		} else {
+			out = append(out, rr)
+		}
+	}
+	return out
 }

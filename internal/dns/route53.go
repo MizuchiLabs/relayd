@@ -1,16 +1,8 @@
 package dns
 
-import (
-	"os"
+import "github.com/libdns/route53"
 
-	"github.com/libdns/route53"
-
-	"github.com/mizuchilabs/relayd/internal/config"
-)
-
-// NewRoute53Provider creates a new Route53 DNS provider wrapped for relayd.
-func NewRoute53Provider(cfg config.Provider) Provider {
-	return newWrapper(cfg, &route53.Provider{
-		HostedZoneID: os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_ZONE_ID"),
-	})
+// newRoute53 picks up AWS credentials from the usual AWS env vars and config files.
+func newRoute53(env env) client {
+	return &route53.Provider{HostedZoneID: env("ZONE_ID")}
 }

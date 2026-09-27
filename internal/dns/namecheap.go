@@ -1,17 +1,7 @@
 package dns
 
-import (
-	"os"
+import "github.com/libdns/namecheap"
 
-	"github.com/libdns/namecheap"
-
-	"github.com/mizuchilabs/relayd/internal/config"
-)
-
-// NewNamecheapProvider creates a new Namecheap DNS provider wrapped for relayd.
-func NewNamecheapProvider(cfg config.Provider) Provider {
-	return newWrapper(cfg, &namecheap.Provider{
-		APIKey: cfg.Token,
-		User:   os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_USER"),
-	})
+func newNamecheap(env env) client {
+	return &namecheap.Provider{APIKey: env("TOKEN"), User: env("USER")}
 }

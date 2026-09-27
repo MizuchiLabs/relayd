@@ -1,23 +1,25 @@
 package dns
 
 import (
-	"os"
+	"cmp"
 	"strings"
 
-	"github.com/mizuchilabs/relayd/internal/config"
 	"github.com/mizuchilabs/relayd/internal/dns/unifi"
 )
 
-// NewUnifiProvider creates a new UniFi DNS provider wrapped for relayd.
-func NewUnifiProvider(cfg config.Provider) Provider {
-	baseURL := cfg.URL
-	if !strings.HasSuffix(baseURL, "/proxy/network/integration/v1") {
-		baseURL = strings.TrimRight(baseURL, "/") + "/proxy/network/integration/v1"
+func newUnifi(env env) (client, error) {
+	insecure, err := parseBool(env("INSECURE"), false)
+	if err != nil {
+		return nil, err
 	}
-
-	return newWrapper(cfg, &unifi.Provider{
-		Server: baseURL,
-		Token:  cfg.Token,
-		Site:   os.Getenv("RELAYD_PROVIDER_" + cfg.Name + "_SITE"),
-	})
+	server := env("URL")
+	if !strings.HasSuffix(server, "/proxy/network/integration/v1") {
+		server = strings.TrimRight(server, "/") + "/proxy/network/integration/v1"
+	}
+	return &unifi.Provider{
+		Server:   server,
+		Token:    env("TOKEN"),
+		Site:     cmp.Or(env("SITE"), env("SITE_ID")),
+		Insecure: insecure,
+	}, nil
 }

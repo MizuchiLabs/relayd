@@ -1,230 +1,169 @@
-// Package reconcile compares desired DNS states with actual provider states and applies the necessary changes.
+// Package reconcile works out which DNS records to create and delete in a zone.
+//
+// Without force, relayd owns a host only while a TXT record "relayd.<host>" with
+// its instance value exists, and never touches anything else.
+// With force, relayd owns every A and AAAA record in the zone.
 package reconcile
 
 import (
-	"context"
 	"log/slog"
-	"sort"
+	"slices"
 	"strings"
-
-	"github.com/libdns/libdns"
+	"time"
 
 	"github.com/mizuchilabs/relayd/internal/dns"
 	"github.com/mizuchilabs/relayd/internal/targets"
-	"github.com/mizuchilabs/relayd/internal/util"
 )
 
 const txtPrefix = "relayd"
 
-type recordKey struct {
-	Type  string
-	Name  string
-	Value string
+// Desired is what relayd wants to publish in one zone.
+type Desired struct {
+	Zone     string
+	Instance string
+	// Hosts maps each hostname to its TTL. Zero leaves the TTL to the provider.
+	Hosts map[string]time.Duration
+	IPs   targets.IPs
+	Force bool
 }
 
-// Apply synchronizes desired DNS records and TXT ownership records with the provider.
-func Apply(
-	ctx context.Context,
-	provider dns.Provider,
-	instanceID, zone string,
-	hosts []string,
-	target targets.IPs,
-) error {
-	records, err := provider.Records(ctx, zone)
-	if err != nil {
-		return err
-	}
+type key struct {
+	Type, Name, Value string
+}
 
-	desired := desiredSet(hosts, zone)
-	managed := managedSet(records, zone, instanceID)
+// Plan diffs existing records against the desired state. Records must be normalized as dns.Provider.Records returns them.
+func Plan(d Desired, existing []dns.Record) dns.ChangeSet {
+	zone := strings.ToLower(strings.TrimSuffix(d.Zone, "."))
+	owner := "managed-by=relayd-" + d.Instance
 
-	existingHosts := make(map[string]struct{})
-	for _, r := range records {
-		if r.Type == "A" || r.Type == "AAAA" || r.Type == "CNAME" {
-			name := r.Name
-			if name == "@" || name == "" {
-				existingHosts[strings.TrimSuffix(util.WithDot(zone), ".")] = struct{}{}
-			} else {
-				absName := libdns.AbsoluteName(r.Name, util.WithDot(zone))
-				existingHosts[strings.TrimSuffix(absName, ".")] = struct{}{}
+	owned := map[string]bool{}
+	taken := map[string]bool{}
+	cname := map[string]bool{}
+	for _, r := range existing {
+		switch r.Type {
+		case "A", "AAAA":
+			taken[fqdn(r.Name, zone)] = true
+		case "CNAME":
+			taken[fqdn(r.Name, zone)] = true
+			cname[fqdn(r.Name, zone)] = true
+		case "TXT":
+			if host, ok := txtHost(r.Name, zone); ok && r.Value == owner {
+				owned[host] = true
 			}
 		}
 	}
 
+	// TXT goes first so a host is never published without its owner record.
+	var want []dns.Record
+	for _, host := range hostsInZone(d.Hosts, zone) {
+		switch {
+		case cname[host]:
+			slog.Warn("Skipping host with a CNAME record", "host", host)
+			continue
+		case !d.Force && taken[host] && !owned[host]:
+			slog.Warn("Skipping host with records relayd does not own", "host", host)
+			continue
+		}
+		name, ttl := relative(host, zone), d.Hosts[host]
+		if !d.Force {
+			want = append(want, dns.Record{Type: "TXT", Name: txtName(name), Value: owner, TTL: ttl})
+		}
+		if d.IPs.IPv4 != "" {
+			want = append(want, dns.Record{Type: "A", Name: name, Value: d.IPs.IPv4, TTL: ttl})
+		}
+		if d.IPs.IPv6 != "" {
+			want = append(want, dns.Record{Type: "AAAA", Name: name, Value: d.IPs.IPv6, TTL: ttl})
+		}
+	}
+
+	have := map[key]dns.Record{}
+	for _, r := range existing {
+		have[keyOf(r)] = r
+	}
+	wanted := map[key]bool{}
 	var changes dns.ChangeSet
-	var desiredRecords []dns.Record
-
-	for fqdn := range desired {
-		if !provider.Force() {
-			if _, isManaged := managed[fqdn]; !isManaged {
-				if _, exists := existingHosts[fqdn]; exists {
-					slog.Warn(
-						"Skipping unmanaged host with existing records",
-						"host",
-						fqdn,
-						"provider",
-						provider.Name(),
-					)
-					continue
-				}
-			}
-		}
-
-		rel := libdns.RelativeName(fqdn, util.WithDot(zone))
-		// Order matters here
-		if !provider.Force() {
-			desiredRecords = append(desiredRecords, dns.Record{
-				Type:  "TXT",
-				Name:  txtName(rel),
-				Value: txtValue(instanceID),
-			})
-		}
-		if target.IPv4 != "" {
-			desiredRecords = append(
-				desiredRecords,
-				dns.Record{Type: "A", Name: rel, Value: target.IPv4},
-			)
-		}
-		if target.IPv6 != "" {
-			desiredRecords = append(
-				desiredRecords,
-				dns.Record{Type: "AAAA", Name: rel, Value: target.IPv6},
-			)
-		}
-	}
-
-	existingMap := make(map[recordKey]dns.Record)
-	for _, r := range records {
-		key := recordKey{Type: r.Type, Name: r.Name, Value: r.Value}
-		existingMap[key] = r
-	}
-
-	desiredMap := make(map[recordKey]dns.Record)
-	for _, r := range desiredRecords {
-		key := recordKey{Type: r.Type, Name: r.Name, Value: r.Value}
-		desiredMap[key] = r
-	}
-
-	// Calculate Creates (Iterate slice to preserve TXT -> A/AAAA order)
-	for _, r := range desiredRecords {
-		key := recordKey{Type: r.Type, Name: r.Name, Value: r.Value}
-		if _, exists := existingMap[key]; !exists {
-			slog.Debug("Record to create", "type", r.Type, "name", r.Name, "value", r.Value)
+	for _, r := range want {
+		wanted[keyOf(r)] = true
+		cur, ok := have[keyOf(r)]
+		switch {
+		case !ok:
 			changes.Create = append(changes.Create, r)
-			existingMap[key] = r // Add to existingMap temporarily so we don't duplicate creates
+		// A zero TTL means auto, which each provider reports differently, so only explicit TTLs are compared.
+		// TXT is skipped because some providers (UniFi) keep no TTL on it.
+		case r.Type != "TXT" && r.TTL != 0 && cur.TTL != r.TTL:
+			changes.Update = append(changes.Update, r)
 		}
 	}
 
-	// Calculate Deletes
-	for _, r := range records {
-		if r.Type != "A" && r.Type != "AAAA" && r.Type != "TXT" {
+	// A and AAAA go before TXT so a failed delete never orphans an address record.
+	var txts []dns.Record
+	for _, r := range existing {
+		if wanted[keyOf(r)] {
 			continue
 		}
-
-		// Do not touch other TXT records (e.g., SPF, DKIM)
-		if r.Type == "TXT" && !strings.HasPrefix(r.Name, txtPrefix) {
-			continue
-		}
-
-		key := recordKey{Type: r.Type, Name: r.Name, Value: r.Value}
-		if _, desired := desiredMap[key]; desired {
-			continue
-		}
-
-		absName := libdns.AbsoluteName(r.Name, util.WithDot(zone))
-		hostToCheck := strings.TrimSuffix(absName, ".")
-
-		if r.Type == "TXT" && strings.HasPrefix(r.Name, txtPrefix) {
-			if r.Name == txtPrefix {
-				hostToCheck = strings.TrimSuffix(util.WithDot(zone), ".")
-			} else if after, ok := strings.CutPrefix(r.Name, txtPrefix+"."); ok {
-				hostToCheck = strings.TrimSuffix(libdns.AbsoluteName(after, util.WithDot(zone)), ".")
+		switch r.Type {
+		case "A", "AAAA":
+			if d.Force || owned[fqdn(r.Name, zone)] {
+				changes.Delete = append(changes.Delete, r)
 			}
-		}
-
-		shouldDelete := false
-		if !provider.Force() {
-			if _, isManaged := managed[hostToCheck]; isManaged {
-				shouldDelete = true
+		case "TXT":
+			if _, ok := txtHost(r.Name, zone); ok && r.Value == owner {
+				txts = append(txts, r)
 			}
-		} else {
-			if _, isDesired := desired[hostToCheck]; !isDesired {
-				shouldDelete = true
-			}
-		}
-
-		if shouldDelete {
-			slog.Debug("Record to delete",
-				"type", r.Type, "name", r.Name, "value", r.Value,
-				"host", hostToCheck, "force", provider.Force(),
-			)
-			changes.Delete = append(changes.Delete, r)
 		}
 	}
-
-	// Sort Deletes: A/AAAA records first, TXT records LAST.
-	// If deletion fails midway, we don't orphan A records without their owner TXT.
-	sort.Slice(changes.Delete, func(i, j int) bool {
-		if changes.Delete[i].Type != "TXT" && changes.Delete[j].Type == "TXT" {
-			return true
-		}
-		if changes.Delete[i].Type == "TXT" && changes.Delete[j].Type != "TXT" {
-			return false
-		}
-		return changes.Delete[i].Name < changes.Delete[j].Name
-	})
-
-	if len(changes.Create) == 0 && len(changes.Delete) == 0 {
-		return nil
-	}
-
-	slog.Info("Applying changes",
-		"add", len(changes.Create), "delete", len(changes.Delete),
-		"provider", provider.Name(), "zone", zone,
-	)
-	return provider.Apply(ctx, zone, changes)
+	changes.Delete = append(changes.Delete, txts...)
+	return changes
 }
 
-func desiredSet(hosts []string, zone string) map[string]struct{} {
-	out := make(map[string]struct{})
-	zDot := util.WithDot(strings.ToLower(zone))
-	for _, h := range hosts {
-		full := util.WithDot(h)
-		if full == zDot || strings.HasSuffix(full, "."+zDot) {
-			out[strings.TrimSuffix(full, ".")] = struct{}{}
+func keyOf(r dns.Record) key {
+	return key{r.Type, r.Name, r.Value}
+}
+
+// hostsInZone returns the sorted hosts that belong to zone.
+func hostsInZone(hosts map[string]time.Duration, zone string) []string {
+	var out []string
+	for h := range hosts {
+		if h == zone || strings.HasSuffix(h, "."+zone) {
+			out = append(out, h)
 		}
 	}
+	slices.Sort(out)
 	return out
 }
 
-func managedSet(records []dns.Record, zone string, instanceID string) map[string]struct{} {
-	out := make(map[string]struct{})
-	zDot := util.WithDot(strings.ToLower(zone))
-
-	for _, r := range records {
-		val := strings.Trim(r.Value, "\"")
-
-		// only claim management if the TXT value matches our specific instance
-		if r.Type == "TXT" && val == txtValue(instanceID) {
-			name := strings.Trim(strings.ToLower(r.Name), ".")
-			if name == txtPrefix {
-				out[strings.TrimSuffix(zDot, ".")] = struct{}{}
-			} else if after, ok := strings.CutPrefix(name, txtPrefix+"."); ok {
-				rel := after
-				out[strings.TrimSuffix(libdns.AbsoluteName(rel, zDot), ".")] = struct{}{}
-			}
-		}
+func fqdn(name, zone string) string {
+	switch {
+	case name == "@" || name == "":
+		return zone
+	case strings.HasSuffix(name, "."):
+		return strings.TrimSuffix(name, ".")
+	default:
+		return name + "." + zone
 	}
-	return out
 }
 
-func txtName(rel string) string {
-	if rel == "" || rel == "@" {
+func relative(host, zone string) string {
+	if host == zone {
+		return "@"
+	}
+	return strings.TrimSuffix(host, "."+zone)
+}
+
+func txtName(name string) string {
+	if name == "@" {
 		return txtPrefix
 	}
-	return txtPrefix + "." + rel
+	return txtPrefix + "." + name
 }
 
-func txtValue(instanceID string) string {
-	return "managed-by=relayd-" + instanceID
+// txtHost returns the host an ownership TXT record name points at.
+func txtHost(name, zone string) (string, bool) {
+	if name == txtPrefix {
+		return zone, true
+	}
+	if rest, ok := strings.CutPrefix(name, txtPrefix+"."); ok {
+		return fqdn(rest, zone), true
+	}
+	return "", false
 }

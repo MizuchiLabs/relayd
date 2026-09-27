@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/mizuchilabs/kata/sigx"
 	"github.com/urfave/cli/v3"
 
-	"github.com/mizuchilabs/relayd/internal/config"
 	"github.com/mizuchilabs/relayd/internal/engine"
 )
 
@@ -25,10 +23,6 @@ func main() {
 		Usage:                 "keeps your DNS records in sync",
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 			logx.Init(cmd.Bool("debug"))
-
-			if _, err := os.Stat("/var/run/docker.sock"); err != nil {
-				slog.Warn("Docker socket not found", "path", "/var/run/docker.sock")
-			}
 			return ctx, nil
 		},
 		DefaultCommand: "start",
@@ -37,7 +31,12 @@ func main() {
 				Name:  "start",
 				Usage: "Start the relayd synchronization engine",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return engine.Run(ctx, config.New(cmd))
+					return engine.Run(ctx, engine.Options{
+						Instance: cmd.String("instance"),
+						Interval: cmd.Duration("interval"),
+						IPFamily: cmd.String("ip-family"),
+						DryRun:   cmd.Bool("dry-run"),
+					})
 				},
 			},
 		},
@@ -56,7 +55,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    "instance",
-				Usage:   "Unique identifier for the relayd instance (e.g. 'my-instance')",
+				Usage:   "Unique identifier for the relayd instance, defaults to the hostname",
 				Sources: cli.EnvVars("RELAYD_INSTANCE"),
 			},
 			&cli.StringFlag{
@@ -65,6 +64,11 @@ func main() {
 				Usage:   "IP family to synchronize: ipv4, ipv6, or dual",
 				Value:   "ipv4",
 				Sources: cli.EnvVars("RELAYD_IP_FAMILY"),
+			},
+			&cli.BoolFlag{
+				Name:    "dry-run",
+				Usage:   "Log planned DNS changes without applying them",
+				Sources: cli.EnvVars("RELAYD_DRY_RUN"),
 			},
 		},
 	}

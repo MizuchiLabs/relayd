@@ -1,203 +1,153 @@
-// Package discovery is responsible for locating services and extracting their desired hostnames.
+// Package discovery finds the hostnames relayd should publish from Docker containers and Swarm services.
 package discovery
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/moby/moby/api/types/events"
 	"github.com/moby/moby/client"
 
-	"github.com/mizuchilabs/relayd/internal/util"
+	"github.com/mizuchilabs/relayd/internal/dns"
 )
 
-type Event struct {
-	Action string
-	ID     string
+var (
+	hostRule    = regexp.MustCompile(`Host\(([^)]*)\)`)
+	quotedValue = regexp.MustCompile("`([^`]*)`|\"([^\"]*)\"|'([^']*)'")
+)
+
+// Host is a hostname and the providers (by name or scope) it may be published to. No providers means all of them.
+type Host struct {
+	Name      string
+	Providers []string
+	// TTL comes from the relayd.ttl label. Zero means the provider's default.
+	TTL time.Duration
 }
 
-type DockerSource struct {
+type Docker struct {
 	cli *client.Client
 }
 
-var hostRuleRegex = regexp.MustCompile(`Host\(([^)]*)\)`)
-
-func NewDockerSource() (*DockerSource, error) {
+// New connects to the Docker daemon from DOCKER_HOST (or the default socket) and closes the connection when ctx is done.
+func New(ctx context.Context) (*Docker, error) {
 	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		return nil, err
 	}
-	return &DockerSource{cli: cli}, nil
+	if _, err := cli.Ping(ctx, client.PingOptions{NegotiateAPIVersion: true}); err != nil {
+		_ = cli.Close()
+		return nil, fmt.Errorf("connecting to docker: %w", err)
+	}
+	context.AfterFunc(ctx, func() { _ = cli.Close() })
+	return &Docker{cli: cli}, nil
 }
 
-func (s *DockerSource) Close() error {
-	return s.cli.Close()
-}
-
-func (s *DockerSource) ListHostnames(ctx context.Context) (map[string][]string, error) {
-	hosts := make(map[string]map[string]bool)
-
-	filters := client.Filters{}
-	filters.Add("label", "relayd.enable=true")
-	containers, err := s.cli.ContainerList(ctx, client.ContainerListOptions{Filters: filters})
+// Hosts lists the hosts of running containers and Swarm services labeled relayd.enable=true.
+func (d *Docker) Hosts(ctx context.Context) ([]Host, error) {
+	containers, err := d.cli.ContainerList(ctx, client.ContainerListOptions{
+		Filters: client.Filters{}.Add("label", "relayd.enable=true"),
+	})
 	if err != nil {
 		return nil, err
 	}
 
+	var hosts []Host
 	for _, c := range containers.Items {
-		processLabels(c.Labels, hosts)
+		hosts = append(hosts, hostsFromLabels(c.Labels)...)
 	}
 
-	// Fetch swarm services (ignoring errors if not a swarm manager)
-	services, err := s.cli.ServiceList(ctx, client.ServiceListOptions{})
-	if err == nil {
-		for _, svc := range services.Items {
-			// Check both service-level and container-level labels
-			processLabels(svc.Spec.Labels, hosts)
-			if svc.Spec.TaskTemplate.ContainerSpec != nil {
-				processLabels(svc.Spec.TaskTemplate.ContainerSpec.Labels, hosts)
-			}
+	// relayd.enable can sit on the service or on its container spec, so services can't be filtered by label.
+	services, err := d.cli.ServiceList(ctx, client.ServiceListOptions{})
+	if err != nil {
+		slog.Debug("Skipping swarm services", "error", err)
+		return hosts, nil
+	}
+	for _, svc := range services.Items {
+		hosts = append(hosts, hostsFromLabels(svc.Spec.Labels)...)
+		if spec := svc.Spec.TaskTemplate.ContainerSpec; spec != nil {
+			hosts = append(hosts, hostsFromLabels(spec.Labels)...)
 		}
 	}
-
-	out := make(map[string][]string)
-	for host, pm := range hosts {
-		if pm["*"] {
-			out[host] = []string{"*"}
-		} else {
-			var plist []string
-			for p := range pm {
-				plist = append(plist, p)
-			}
-			out[host] = plist
-		}
-	}
-	return out, nil
+	return hosts, nil
 }
 
-func processLabels(labels map[string]string, hosts map[string]map[string]bool) {
-	if labels == nil || labels["relayd.enable"] != "true" {
-		return // Skip non-relayd containers
+func hostsFromLabels(labels map[string]string) []Host {
+	if labels["relayd.enable"] != "true" {
+		return nil
 	}
 
-	providerMap := make(map[string]bool)
-	if pVal, ok := labels["relayd.providers"]; ok && pVal != "" {
-		for p := range strings.SplitSeq(pVal, ",") {
-			providerMap[strings.TrimSpace(p)] = true
+	var providers []string
+	for p := range strings.SplitSeq(labels["relayd.providers"], ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			providers = append(providers, p)
 		}
 	}
 
-	for _, host := range extractHostnames(labels) {
-		if hosts[host] == nil {
-			hosts[host] = make(map[string]bool)
-		}
-		if len(providerMap) == 0 {
-			hosts[host]["*"] = true
-		} else {
-			for p := range providerMap {
-				hosts[host][p] = true
-			}
-		}
-	}
-}
-
-func extractHostnames(labels map[string]string) []string {
-	var hosts []string
-
-	// Manual label
-	if val, ok := labels["relayd.hosts"]; ok {
-		for v := range strings.SplitSeq(val, ",") {
-			if h := util.NormalizeHostname(v); h != "" {
-				hosts = append(hosts, h)
-			}
-		}
+	ttl, err := dns.ParseTTL(strings.TrimSpace(labels["relayd.ttl"]))
+	if err != nil {
+		slog.Warn("Ignoring relayd.ttl label", "error", err)
 	}
 
-	// Traefik Extract
+	names := strings.Split(labels["relayd.hosts"], ",")
 	for key, value := range labels {
 		if !strings.HasPrefix(key, "traefik.http.routers.") || !strings.HasSuffix(key, ".rule") {
 			continue
 		}
-		for _, match := range hostRuleRegex.FindAllStringSubmatch(value, -1) {
-			if len(match) > 1 {
-				hosts = append(hosts, util.ParseQuotedValues(match[1])...)
+		for _, rule := range hostRule.FindAllStringSubmatch(value, -1) {
+			for _, m := range quotedValue.FindAllStringSubmatch(rule[1], -1) {
+				names = append(names, m[1]+m[2]+m[3])
 			}
 		}
 	}
 
+	var hosts []Host
+	for _, name := range names {
+		name = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(name)), ".")
+		if name != "" && !strings.ContainsAny(name, " \t") {
+			hosts = append(hosts, Host{Name: name, Providers: providers, TTL: ttl})
+		}
+	}
 	return hosts
 }
 
-func (s *DockerSource) Watch(ctx context.Context) <-chan Event {
-	var stream <-chan events.Message
-	var errs <-chan error
+// Watch signals when containers or services change. Bursts (like compose up) collapse into one signal
+// after things go quiet for a second. It also signals after reconnecting, to catch missed events.
+func (d *Docker) Watch(ctx context.Context) <-chan struct{} {
+	out := make(chan struct{}, 1)
+	filters := client.Filters{}.
+		Add("type", "container", "service").
+		Add("event", "start", "die", "create", "update", "remove")
 
-	out := make(chan Event, 100)
-	startStream := func() {
-		filters := client.Filters{}
-
-		// Standalone Containers
-		filters.Add("type", "container")
-		filters.Add("event", "start")
-		filters.Add("event", "die")
-
-		// Swarm Services
-		filters.Add("type", "service")
-		filters.Add("event", "create")
-		filters.Add("event", "update")
-		filters.Add("event", "remove")
-
-		res := s.cli.Events(ctx, client.EventsListOptions{Filters: filters})
-		stream = res.Messages
-		errs = res.Err
-	}
-
-	startStream()
-
-	var debounceTimer *time.Timer
 	go func() {
-		defer close(out)
+		debounce := time.NewTimer(time.Hour)
+		debounce.Stop()
+		events := d.cli.Events(ctx, client.EventsListOptions{Filters: filters})
+
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case err, ok := <-errs:
-				if !ok || err != nil {
-					if ctx.Err() != nil {
-						return
-					}
-					if err != nil {
-						slog.Error("Docker event error", "error", err)
-					}
-					time.Sleep(3 * time.Second)
-					startStream()
-					out <- Event{Action: "reconnect"}
+			case <-events.Messages:
+				debounce.Reset(time.Second)
+			case <-debounce.C:
+				select {
+				case out <- struct{}{}:
+				default:
 				}
-
-			case msg, ok := <-stream:
-				if !ok {
-					if ctx.Err() != nil {
-						return
-					}
-					slog.Warn("Docker event stream closed, reconnecting...")
-					time.Sleep(3 * time.Second)
-					startStream()
-					out <- Event{Action: "reconnect"}
-					continue
+			case err := <-events.Err:
+				slog.Warn("Docker event stream lost, reconnecting", "error", err)
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(3 * time.Second):
 				}
-
-				if debounceTimer != nil {
-					debounceTimer.Stop()
-				}
-				debounceTimer = time.AfterFunc(100*time.Millisecond, func() {
-					out <- Event{Action: string(msg.Action), ID: msg.Actor.ID}
-				})
+				events = d.cli.Events(ctx, client.EventsListOptions{Filters: filters})
+				debounce.Reset(0)
 			}
 		}
 	}()
-
 	return out
 }

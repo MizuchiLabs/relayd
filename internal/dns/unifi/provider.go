@@ -11,10 +11,11 @@ import (
 )
 
 type Provider struct {
-	client *Client
-	Server string `json:"server,omitempty"`
-	Token  string `json:"token,omitempty"`
-	Site   string `json:"site,omitempty"`
+	client   *Client
+	Server   string `json:"server,omitempty"`
+	Token    string `json:"token,omitempty"`
+	Site     string `json:"site,omitempty"`
+	Insecure bool   `json:"insecure,omitzero"`
 }
 
 type unifiRecord struct {
@@ -29,7 +30,7 @@ func (u unifiRecord) RR() libdns.RR {
 
 func (p *Provider) getClient() *Client {
 	if p.client == nil {
-		p.client = &Client{BaseURL: p.Server, Token: p.Token, Site: p.Site}
+		p.client = &Client{BaseURL: p.Server, Token: p.Token, Site: p.Site, Insecure: p.Insecure}
 	}
 	return p.client
 }
