@@ -6,10 +6,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/urfave/cli/v3"
+
 	"github.com/mizuchilabs/kata/buildinfo"
 	"github.com/mizuchilabs/kata/logx"
 	"github.com/mizuchilabs/kata/sigx"
-	"github.com/urfave/cli/v3"
 
 	"github.com/mizuchilabs/relayd/internal/engine"
 )
