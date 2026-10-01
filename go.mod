@@ -13,7 +13,7 @@ require (
 	github.com/libdns/rfc2136 v1.0.1
 	github.com/libdns/route53 v1.6.2
 	github.com/libdns/scaleway v0.3.1
-	github.com/mizuchilabs/kata v0.1.14
+	github.com/mizuchilabs/kata v0.1.15
 	github.com/moby/moby/client v0.6.0
 	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli/v3 v3.13.0

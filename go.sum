@@ -119,8 +119,8 @@ github.com/miekg/dns v1.1.73/go.mod h1:RW2Obtfd5NZHvOFe3zYG0W8koWOQtAzyHaLo8vASB
 github.com/mittwald/go-powerdns v0.6.6/go.mod h1:adWJ860laOgm14afg+7V0nCa5NQT37oEYe2HRhoS/CA=
 github.com/mittwald/go-powerdns v0.6.7 h1:r638QOYLWyJ5Wy+qynlq5nTRlhmfQMJvM9BDsbhyiro=
 github.com/mittwald/go-powerdns v0.6.7/go.mod h1:zFe/i17IP6/NGFkWGGsPL0t7VrL6u14HU8Hr06X4Qmg=
-github.com/mizuchilabs/kata v0.1.14 h1:5Z2gJ1xKmFrFiN23ovPFnn1p65t9lcWe/DGtgzpZuUs=
-github.com/mizuchilabs/kata v0.1.14/go.mod h1:s24K0qob5pRZAE57lWKnInhl2qGScuWmAOrLh9Zd4Oo=
+github.com/mizuchilabs/kata v0.1.15 h1:elUyxJghTH+Ig25IEbHwSNMm3F4bHJPQOau+2vgs9WM=
+github.com/mizuchilabs/kata v0.1.15/go.mod h1:s24K0qob5pRZAE57lWKnInhl2qGScuWmAOrLh9Zd4Oo=
 github.com/moby/docker-image-spec v1.3.1 h1:jMKff3w6PgbfSa69GfNg+zN/XLhfXJGnEx3Nl2EsFP0=
 github.com/moby/docker-image-spec v1.3.1/go.mod h1:eKmb5VW8vQEh/BAr2yvVNvuiJuY6UIocYsFu/DxxRpo=
 github.com/moby/moby/api v1.56.0 h1:GQzua3NA599ASSIICx0iFgiJeO9YkdDARvQsm23ZZuQ=
