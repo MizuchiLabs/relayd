@@ -16,7 +16,7 @@ require (
 	github.com/mizuchilabs/kata v0.1.15
 	github.com/moby/moby/client v0.6.1
 	github.com/stretchr/testify v1.12.1
-	github.com/urfave/cli/v3 v3.13.0
+	github.com/urfave/cli/v3 v3.14.0
 )
 
 require (
