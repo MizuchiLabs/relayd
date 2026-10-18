@@ -117,7 +117,9 @@ func (p *Provider) SetRecords(
 					existingID = e.ID
 					break
 				}
-				if existingID == "" && e.Domain == pol.Domain && e.Type == pol.Type {
+				if existingID == "" && e.Domain == pol.Domain && e.Type == pol.Type &&
+					e.Service == pol.Service &&
+					strings.TrimPrefix(e.Protocol, "_") == strings.TrimPrefix(pol.Protocol, "_") {
 					existingID = e.ID
 				}
 			}
@@ -380,7 +382,9 @@ func isExactMatch(existing, target DNSPolicy) bool {
 		return existing.MailServerDomain == target.MailServerDomain &&
 			existing.Priority == target.Priority
 	case "SRV_RECORD":
-		return existing.ServerDomain == target.ServerDomain &&
+		return existing.Service == target.Service &&
+			strings.TrimPrefix(existing.Protocol, "_") == strings.TrimPrefix(target.Protocol, "_") &&
+			existing.ServerDomain == target.ServerDomain &&
 			existing.Priority == target.Priority &&
 			existing.Weight == target.Weight &&
 			existing.Port == target.Port
