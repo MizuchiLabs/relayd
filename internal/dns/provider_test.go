@@ -14,6 +14,8 @@ import (
 	"github.com/libdns/libdns"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mizuchilabs/relayd/internal/dns/unifi"
 )
 
 func TestLoadProviders(t *testing.T) {
@@ -75,6 +77,23 @@ func TestCloudflareProxiedDefault(t *testing.T) {
 	assert.False(t, proxied("local", ""), "local must not proxy private IPs by default")
 	assert.False(t, proxied("public", "false"))
 	assert.True(t, proxied("local", "true"))
+}
+
+func TestUnifiInsecureDefault(t *testing.T) {
+	t.Parallel()
+	insecure := func(value string) bool {
+		c, err := newUnifi(func(key string) string {
+			if key == "INSECURE" {
+				return value
+			}
+			return ""
+		})
+		require.NoError(t, err)
+		return c.(*unifi.Provider).Insecure
+	}
+
+	assert.True(t, insecure(""), "unifi accepts its self-signed cert by default")
+	assert.False(t, insecure("false"))
 }
 
 func TestProxiedClient(t *testing.T) {

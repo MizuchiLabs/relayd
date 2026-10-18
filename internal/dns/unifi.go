@@ -8,7 +8,8 @@ import (
 )
 
 func newUnifi(env env) (client, error) {
-	insecure, err := parseBool(env("INSECURE"), false)
+	// UniFi gateways ship a self-signed cert and are rarely behind a proxy, so verification is opt-in.
+	insecure, err := parseBool(env("INSECURE"), true)
 	if err != nil {
 		return nil, err
 	}

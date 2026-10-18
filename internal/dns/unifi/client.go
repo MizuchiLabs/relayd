@@ -59,8 +59,8 @@ func (c *Client) getClient() *http.Client {
 	if c.client == nil {
 		base, _ := http.DefaultTransport.(*http.Transport)
 		customTransport := base.Clone()
-		// #nosec G402 - Unifi ships with self-signed certs
-		customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		// #nosec G402 - UniFi ships with self-signed certs, INSECURE defaults to true
+		customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: c.Insecure}
 
 		c.client = &http.Client{
 			Timeout:   10 * time.Second,

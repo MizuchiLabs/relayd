@@ -7,12 +7,12 @@ RELAYD_PROVIDER_UNIFI_URL=https://192.168.1.1
 RELAYD_PROVIDER_UNIFI_TOKEN=api-token
 RELAYD_PROVIDER_UNIFI_ZONES=example.com
 RELAYD_PROVIDER_UNIFI_SITE=default # Optional, site name or ID
-RELAYD_PROVIDER_UNIFI_INSECURE=true # Needed for the default self-signed certificate
+RELAYD_PROVIDER_UNIFI_INSECURE=true # Optional, default true for the self-signed certificate
 ```
 
 - **Scope**: `local`
 - **Requires**: UniFi controller credentials.
-- **TLS**: UniFi gateways ship with a self-signed certificate. Set `INSECURE=true` to accept it, or put a trusted certificate on the gateway.
+- **TLS**: UniFi gateways ship with a self-signed certificate, so certificate checks are off by default. If the gateway has a trusted certificate, set `INSECURE=false` to verify it.
 
 ### Adopting Existing Domains
 

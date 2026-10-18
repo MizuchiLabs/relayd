@@ -111,10 +111,14 @@ func (p *Provider) SetRecords(
 				}
 				fetchedExisting = true
 			}
+			// Prefer the policy with the same value, so a TTL update never rewrites a sibling record.
 			for _, e := range existing {
-				if e.Domain == pol.Domain && e.Type == pol.Type {
+				if isExactMatch(e, pol) {
 					existingID = e.ID
 					break
+				}
+				if existingID == "" && e.Domain == pol.Domain && e.Type == pol.Type {
+					existingID = e.ID
 				}
 			}
 		}
