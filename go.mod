@@ -1,6 +1,6 @@
 module github.com/mizuchilabs/relayd
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/libdns/cloudflare v0.2.2
