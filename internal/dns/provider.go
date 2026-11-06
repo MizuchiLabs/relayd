@@ -134,7 +134,8 @@ func ParseTTL(value string) (time.Duration, error) {
 	}
 	ttl, err := time.ParseDuration(value)
 	if secs, serr := strconv.Atoi(value); serr == nil {
-		ttl, err = time.Duration(secs)*time.Second, nil
+		// Bound secs before scaling so huge values can't overflow and wrap sign.
+		ttl, err = time.Duration(min(max(secs, -1), 24*60*60))*time.Second, nil
 	}
 	if err != nil {
 		return 0, fmt.Errorf("invalid TTL %q", value)
