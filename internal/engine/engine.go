@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"slices"
@@ -36,6 +37,9 @@ type engine struct {
 // Run syncs once, then again on every Docker change and every interval, until ctx is done.
 func Run(ctx context.Context, opts Options) error {
 	opts.Instance = cmp.Or(opts.Instance, hostname())
+	if opts.Interval <= 0 {
+		return fmt.Errorf("interval must be positive, got %s", opts.Interval)
+	}
 
 	providers, err := dns.LoadProviders()
 	if err != nil {
