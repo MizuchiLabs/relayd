@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 )
@@ -174,7 +175,13 @@ func (c *Client) getRecords(ctx context.Context, zone string) ([]DNSPolicy, erro
 		offset += limit
 	}
 
-	return all, nil
+	// The like filter is a plain suffix match, so "notahome.lan" also comes back for "home.lan".
+	return slices.DeleteFunc(all, func(p DNSPolicy) bool { return !inZone(p.Domain, zoneFilter) }), nil
+}
+
+func inZone(name, zone string) bool {
+	name, zone = strings.TrimSuffix(name, "."), strings.TrimSuffix(zone, ".")
+	return strings.EqualFold(name, zone) || strings.HasSuffix(strings.ToLower(name), "."+strings.ToLower(zone))
 }
 
 func (c *Client) createRecord(ctx context.Context, policy DNSPolicy) (DNSPolicy, error) {
