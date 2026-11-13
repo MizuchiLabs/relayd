@@ -14,7 +14,7 @@ require (
 	github.com/libdns/route53 v1.6.3
 	github.com/libdns/scaleway v0.3.1
 	github.com/mizuchilabs/kata v0.2.0
-	github.com/moby/moby/client v0.6.2
+	github.com/moby/moby/client v0.6.3
 	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli/v3 v3.14.0
 )
@@ -57,7 +57,7 @@ require (
 	github.com/miekg/dns v1.1.73 // indirect
 	github.com/mittwald/go-powerdns v0.6.7 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
-	github.com/moby/moby/api v1.56.1 // indirect
+	github.com/moby/moby/api v1.57.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
